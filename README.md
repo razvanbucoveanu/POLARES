@@ -13,5 +13,5 @@ that in the present version the two-loop corrections are based on an calculation
 assumes the lepton mass to be negligibly small compared with the momentum transfer.
 This approximation may not be valid for muon scattering at low energies.
 
-For more details about the program and instructions on how to install and use please consult 
+For more details about the program and instructions on how to install and use it please consult 
 the manual found in the /doc folder. 
