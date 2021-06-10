@@ -1,0 +1,51 @@
+################################################################################
+##
+##                            POLARES 1.0
+##
+##       Radiative Corrections for Polarized Electron-Proton Scattering     
+##
+##                              R.-D. Bucoveanu                             
+##
+##                         Mon Apr  8 16:43:25 2019
+################################################################################
+##                                  Input                                   
+##
+## [General Input]                                                          
+## Type of incident lepton = electron
+## Incident lepton energy = 0.155 GeV
+## Lower cut-off value for the photon energy (Delta) = 1 MeV
+## Type of cuts for elastic scattering = Scattering angle (theta_l) cuts
+## theta_l min = 25 degrees
+## theta_l max = 45 degrees
+## Form factor parametrization = Simple Dipole
+## Degree of Polarization = 100%
+## Calculate the asymmetry = yes
+## Maximum number of evaluations for 1st order = 100000000
+## Minimum number of evaluations = 100000
+## Relative accuracy = 1e-100
+## Number of cores = 4
+## Seed = 1
+##
+## [E_gamma < Delta]
+## Vacuum Polarization = no contribution
+## Two-photon exchange correction (TPE) = no contribution
+##
+## [E_gamma > Delta]
+## Type of Bremsstrahlung = 1st order
+## E_gamma max = 0.11 GeV
+## E' min = 0.045 GeV
+## E' max = 0.154 GeV
+## theta_gamma min = 0 degrees
+## theta_gamma max = 180 degrees
+################################################################################
+##                   Numerical integration results                          
+##
+## Sigma Born = 34539.258512407 +- 0.10093539108985 nb
+## Sigma soft-photon 1st order = 28171.06423837 +- 0.082349501673716 nb
+## Sigma hard-photon 1st order= 7679.0494370297 +- 2.3842442159982 nb
+## Sigma unpolarized 1st order= 35850.1136754 +- 2.3856659284038 nb
+## Sigma soft-photon polarized 1st order= -0.002344006456695 +- 7.1033174907716e-09 nb
+## Sigma hard-photon 1st order polarized = -0.00049840251523087 +- 1.2808303169829e-07 nb
+## Asymm 1st order= -7.9285912386836e-08 +- -6.485137600631e-12
+## Asymm Born = -8.3394224494516e-08 +- -3.5077060285798e-13
+################################################################################

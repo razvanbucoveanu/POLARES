@@ -1,0 +1,30 @@
+SUBDIRS = common cuhre divonne suave vegas
+
+noinst_LTLIBRARIES = libCommon.la \
+		libCuhre.la \
+		libVegas.la \
+		libDivonne.la \
+		libSuave.la
+
+
+libCommon_la_SOURCES = 		
+libCommon_la_LIBADD = common/libFork.la common/libForkU.la \
+		common/libGlobal.la common/libGlobalU.la \
+		common/libData.la
+
+
+libCuhre_la_SOURCES =
+libCuhre_la_LIBADD = cuhre/libnlCuhre.la cuhre/libllCuhre.la cuhre/libnlCuhreU.la cuhre/libllCuhreU.la
+
+
+libDivonne_la_SOURCES =
+libDivonne_la_LIBADD = divonne/libnlDivonne.la divonne/libllDivonne.la divonne/libnlDivonneU.la divonne/libllDivonneU.la
+
+
+libSuave_la_SOURCES =
+libSuave_la_LIBADD = suave/libnlSuave.la suave/libllSuave.la suave/libnlSuaveU.la suave/libllSuaveU.la
+
+
+libVegas_la_SOURCES =
+libVegas_la_LIBADD = vegas/libnlVegas.la vegas/libllVegas.la vegas/libnlVegasU.la vegas/libllVegasU.la
+		

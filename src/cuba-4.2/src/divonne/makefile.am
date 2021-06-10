@@ -1,0 +1,15 @@
+noinst_LTLIBRARIES = libnlDivonne.la libllDivonne.la libnlDivonneU.la libllDivonneU.la
+
+libnlDivonne_la_SOURCES = Divonne.c
+libnlDivonne_la_CPPFLAGS = -DNOUNDERSCORE -I$(top_srcdir)/src/common
+
+libllDivonne_la_SOURCES =  Divonne.c
+libllDivonne_la_CPPFLAGS = -DNOUNDERSCORE -DLONGLONGINT -I$(top_srcdir)/src/common
+
+libnlDivonneU_la_SOURCES = Divonne.c
+libnlDivonneU_la_CPPFLAGS = -I$(top_srcdir)/src/common
+
+libllDivonneU_la_SOURCES = Divonne.c
+libllDivonneU_la_CPPFLAGS = -DLONGLONGINT -I$(top_srcdir)/src/common
+
+EXTRA_DIST = common.c decl.h Explore.c FindMinimum.c Integrate.c Iterate.c KorobovCoeff.c Rule.c Sample.c Split.c

@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+datarootdir=@datarootdir@
+
+Name: POLARES
+Description: Radiative Corrections for Polarized Electron Proton Scattering
+URL: https://POLARES.hepforge.org
+Version: @VERSION@
+Libs: -L@libdir@ -lPOLARES
+Cflags: -I@includedir@

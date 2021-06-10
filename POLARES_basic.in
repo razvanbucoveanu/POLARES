@@ -1,0 +1,79 @@
+#Input file for POLARES v1.0
+#All values for energies and momenta are in units of GeV.
+
+[General Input]
+
+Incident Lepton Energy=0.155
+
+Delta=0.001
+#Lower Cut-off for photon energy
+
+E' min=0.045
+#Minimum of the scattered electron energy
+
+theta_l min=25.
+theta_l max=45.
+#Limits for scattering angle in degrees
+
+Form Factors=0
+# 0 - Simple Dipole
+# 1 - Dipole x Polynomial (Bernauer's PhD thesis pp. 181)
+# 2 - Friedrich-Walcher
+# 3 - Static Limit
+# 4 - User defined
+# 5 - Symmetrized Fermi Form Factor (carbon-12)
+# 6 - User defined (carbon-12)
+
+Polarization=1.
+#Degree of lepton beam polarization (+1 is 100% right-handed)
+
+Asymmetry=1
+# 0 - Don't calculate the polarization dependent cross sections
+# 1 - Calculations include polarized parts and asymmetry
+
+#Input for numerical integration (see the Cuba documentation for details)
+#Common input for all integration methods
+
+Maximum Number of Evaluations 1st=10000000
+#Number of integrand evaluations for the 1st order
+#hard-photon bremsstrahlung correction
+
+Maximum Number of Evaluations 2nd=10000000
+#Number of integrand evaluations for the 2nd order
+#hard-photon bremsstrahlung correction
+
+Echo Input=0
+# 0 - Don't echo the input on screen
+# 1 - Echo the input on screen
+
+#Additional input for elastic cross section (virtual and soft-photon corrections)
+#Vertex and soft-photon bremsstrahlung (SP) is included by default
+[E_gamma < Delta]
+
+Order SP_loop=1
+#Order of soft-photon + 1-loop corrections
+# 0 - No corrections, only leading order included
+# 1 - first order corrections (1-loop + 1-SP)
+# 2 - second order corrections (1+2loop + 1+2SP corrections + 1loop*1SP)
+# (in case hard-photon bremsstrahlung (HP) is included the choice 2 adds also
+# 1loop*1HP + 1SP*1HP corrections)
+
+Vacuum Polarization=3
+# 0 - Not included
+# 1 - Only electron-positron loops
+# 2 - Full leptonic contributions
+# 3 - Full leptonic + hadronic contributions (Ignatov)
+# 4 - Full leptonic + hadronic contributions (Jegerlehner)
+# 5 - Full leptonic + hadronic contributions (KNT18)
+
+#Additional input for inelastic cross sections (hard photon corrections)
+#Result includes only hard-photon leptonic bremsstrahlung process (HP)
+[E_gamma > Delta]
+
+Bremsstrahlung Type=1
+#The order of the hard-photon bremsstrahlung
+#The event generator works only with 1, 2 or 3
+# 0 - no hard-photon contribution
+# 1 - 1st order
+# 2 - 1st + 2nd order
+# 3 - 2nd order

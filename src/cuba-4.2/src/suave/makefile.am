@@ -1,0 +1,15 @@
+noinst_LTLIBRARIES = libnlSuave.la libllSuave.la libnlSuaveU.la libllSuaveU.la
+
+libnlSuave_la_SOURCES = Suave.c
+libnlSuave_la_CPPFLAGS = -DNOUNDERSCORE -I$(top_srcdir)/src/common
+
+libllSuave_la_SOURCES =  Suave.c
+libllSuave_la_CPPFLAGS = -DNOUNDERSCORE -DLONGLONGINT -I$(top_srcdir)/src/common
+
+libnlSuaveU_la_SOURCES = Suave.c
+libnlSuaveU_la_CPPFLAGS = -I$(top_srcdir)/src/common
+
+libllSuaveU_la_SOURCES = Suave.c
+libllSuaveU_la_CPPFLAGS = -DLONGLONGINT -I$(top_srcdir)/src/common
+
+EXTRA_DIST = common.c decl.h Fluct.c Grid.c Integrate.c Sample.c

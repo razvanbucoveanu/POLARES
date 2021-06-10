@@ -1,0 +1,15 @@
+noinst_LTLIBRARIES = libnlCuhre.la libllCuhre.la libnlCuhreU.la libllCuhreU.la
+
+libnlCuhre_la_SOURCES = Cuhre.c
+libnlCuhre_la_CPPFLAGS = -DNOUNDERSCORE -I$(top_srcdir)/src/common
+
+libllCuhre_la_SOURCES =  Cuhre.c
+libllCuhre_la_CPPFLAGS = -DNOUNDERSCORE -DLONGLONGINT -I$(top_srcdir)/src/common
+
+libnlCuhreU_la_SOURCES = Cuhre.c
+libnlCuhreU_la_CPPFLAGS = -I$(top_srcdir)/src/common
+
+libllCuhreU_la_SOURCES = Cuhre.c
+libllCuhreU_la_CPPFLAGS = -DLONGLONGINT -I$(top_srcdir)/src/common
+
+EXTRA_DIST = common.c decl.h Integrate.c Rule.c

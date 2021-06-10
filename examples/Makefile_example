@@ -1,0 +1,29 @@
+#The install directory of POLARES
+POLARES = /home/user_name/POLARES-1.0
+
+#Install directory of GSL
+GSL = /home/user_name/GSL
+
+#Work directory which contains the user defined program files,
+#for example 'example.cpp' and this makefile
+#this directory should contain also the folder named 'share'
+#and the input file
+POLARES_WORK = /home/user_name/work 
+
+CXX = g++
+CXXFLAGS = -Wall -o -shared
+
+IDIR_POLARES = -I$(POLARES)/include
+IDIR_gsl = -I$(GSL)/include
+
+LIBDIR_POLARES = -L$(POLARES)/lib
+LIBDIR_gsl = -L$(GSL)/lib
+
+LIBS_gsl = -lgsl -lgslcblas
+LIBS_POLARES = -lPOLARES
+LIBS = -lm
+
+files = example.cpp
+
+all:	$(files)
+	$(CXX) $(CXXFLAGS) $(files) $(IDIR_POLARES) $(LIBDIR_POLARES) $(LIBS_POLARES) $(IDIR_gsl) $(LIBDIR_gsl) $(LIBS_gsl) $(LIBS) -o example

@@ -1,0 +1,233 @@
+#Input file for POLARES v1.0
+#All values for energies and momenta are in units of GeV.
+
+################################################################################
+[General Input]
+################################################################################
+
+Incident Lepton=0
+# 0 - electron
+# 1 - positron
+# 2 - muon
+# 3 - anti-muon
+
+Target Particle=0
+# 0 - proton
+# 1 - carbon-12
+
+Incident Lepton Energy=0.155
+
+Delta=0.01
+#Lower Cut-off for photon energy
+
+Type of Delta Cut=0
+# 0 - Photon energy cut-off in the lab frame
+# 1 - Photon energy cut-off in the CM frame
+#In this version it is implemented only 
+#for the process (mu e -> mu e gamma)
+
+Type of Cuts=0
+#Type of limits for elastic scattering
+# 0 - Limits given for scattering angle
+# 1 - Limits given for Q^2
+
+theta_l min=25.
+theta_l max=45.
+#Limits for scattering angle in degrees
+
+Q^2 min=0.0044
+Q^2 max=0.0134
+#Limits for lepton momentum transfer squared
+
+Form Factors=0
+# 0 - Simple Dipole
+# 1 - Dipole x Polynomial (Bernauer's PhD thesis pp. 181)
+# 2 - Friedrich-Walcher
+# 3 - Static Limit
+# 4 - User defined
+# 5 - Symmetrized Fermi Form Factor (carbon-12)
+# 6 - User defined (carbon-12)
+
+Polarization=1.
+#Degree of lepton beam polarization
+
+Asymmetry=1
+# 0 - Don't calculate the polarization dependent cross sections
+# 1 - Calculations include polarized parts and asymmetry
+
+#value of the weak mixing angle
+sin2thetaW=0.23122
+#PDG 2019
+
+#value of the fine-structure constant
+alpha=0.00729735256928
+#PDG 2019
+
+Leading Order=1
+# 0 - Don't calculate the leading order result
+# 1 - Calculate leading order result (only for comparison)
+
+#Input for numerical integration (see the Cuba documentation for details)
+#Common input for all integration methods
+
+Maximum Number of Evaluations LO=10000000
+#Number of integrand evaluations for the leading order
+
+Maximum Number of Evaluations 1st=100000000
+#Number of integrand evaluations for the 1st order
+#hard-photon bremsstrahlung correction
+
+Maximum Number of Evaluations gamma_loop=20000000
+#Number of integrand evaluations for the 1-loop+1-HP correction
+#HP = hard-photon bremsstrahlung
+#Used only for 'Gamma Loop=0'
+
+Maximum Number of Evaluations 2nd=100000000
+#Number of integrand evaluations for the 2nd order
+#hard-photon bremsstrahlung correction
+
+Maximum Number of Evaluations 2nd sg finite=100000000
+#Number of integrand evaluations for the 2nd order
+#soft-photon bremsstrahlung finite correction
+
+Minimum Number of Evaluations=100000
+Relative Accuracy=0
+Number of cores=4
+Seed=1
+# 0 - Sobol quasi-number generator
+# >0 - Mersenne Twister pseudo-number generator
+
+Integration method=0
+# 0 - Vegas
+# 1 - Suave
+# 2 - Cuhre
+
+Echo Input=0
+# 0 - Don't echo the input on screen
+# 1 - Echo the input on screen
+
+Integration Output level=0
+# 0 - No additional information about the iteration
+# 1 - Additional information about the iterations
+# 2 - Same as 1 but also echoes the input parameters
+
+#Vegas specific variables
+
+NSTART=1000
+#Number of integrand evaluations per iteration to start with
+NINCREASE=500
+#Increment of the number of integrand evaluations per iteration
+NBATCH=1000
+#Batch size for sampling
+
+#Suave specific variables
+NNEW=100000
+NMIN=200
+FLATNESS=5.
+
+#Additional input for elastic cross section (virtual and soft-photon corrections)
+#Vertex and soft-photon bremsstrahlung (SP) is included by default
+################################################################################
+[Non-radiative corrections]
+################################################################################
+
+Order SP_loop=1
+#Order of loop corrections corrections
+# 0 - No corrections, only leading order included
+# 1 - first order corrections (1-loop + 1-SP)
+# 2 - second order corrections (1+2loop + 1+2SP corrections + 1loop*1SP)
+# (in case hard-photon bremsstrahlung (HP) is included the choice 2 adds also
+# 1loop*1HP + 1SP*1HP corrections)
+
+Vacuum Polarization=0
+# 0 - not included
+# 1 - only electron-positron loops
+# 2 - full leptonic contributions
+# 3 - full leptonic + hadronic contributions (Ignatov)
+# 4 - full leptonic + hadronic contributions (Jegerlehner)
+# 5 - full leptonic + hadronic contributions (KNT18)
+
+Hadronic corrections=0
+# 0 - not included
+# 1 - only interference terms
+# 2 - only purely hadronic terms
+# 3 - total contribution
+
+#Works only with Hadronic corrections = 1 or 3
+Two-photon exchange=0
+# 0 - only IR terms (according to MTj)
+# 1 - Feshbach term (point-like particle)
+# 2 - Tomalak total (arXiv:1508.03759, 
+# only available for P2 kinematics)
+
+#weak corrections
+Kappa Form Factor=0
+# 0 - no contribution
+# 1 - full contribution
+
+#Additional input for inelastic cross sections (hard photon corrections)
+#Result includes only hard-photon leptonic bremsstrahlung process (HP)
+################################################################################
+[Radiative corrections]
+################################################################################
+
+Bremsstrahlung Type=1
+#Only for Leptonic radiation
+#The order of the hard-photon bremsstrahlung
+#The event generator works only with 1, 2 or 3
+# 0 - no hard-photon contribution
+# 1 - 1st order
+# 2 - 1st + 2nd order
+# 3 - 2nd order
+# 4 - 1st order 2-fold differential in theta_l and theta_gamma
+# 5 - 2nd order 2-fold differential in theta_l and theta'_gamma
+# 6 - 2nd order 1-fold differential in theta'_gamma
+# 7 - 1st order 2-fold differential in theta_l and E'
+# 8 - 1st order 3-fold differential in theta_l, theta_gamma and phi_gamma
+
+Bremsstrahlung Add=1
+#Additional non-infrared contribution to 1hg+1sg
+#works only with Order 'SP_loop=2' and with
+#'Bremsstrahlung Type=1 or 2'
+# 0 - not included
+# 1 - included
+
+Gamma Loop=0
+#Additional information for 1loop*1HP correction
+# 0 - Exact calculation
+# 1 - Approximation
+
+Hadronic Radiation=0
+#Valid only for the unpolarized cross-section
+#Hadronic first order radiation
+# 0 - not included
+# 1 - only interference contribution
+# 2 - only purely hadronic contribution
+# 3 - total contribution
+
+#Maximum of the photon energy
+E_gamma max=1e10
+
+#Limits of the scattered incident particle energy
+E' min=0.045
+E' max=1e10
+
+#Limits of the photon's polar angle
+theta_gamma min=0
+theta_gamma max=180.
+
+Phase Space Parametrization=0
+#Type of paremetrization used for 1st order hard-photon bremsstrahlung phase-space
+# 0 - phi_gamma(E',theta_l,E_gamma,theta_gamma)
+# 1 - E'(theta_l,E_gamma,theta_gamma,phi_gamma)
+
+################################################################################
+[Event Generator]
+################################################################################
+E min=0.155
+E max=0.155
+#minimum and maximum values of the energy of the incoming lepton
+#maximum range is 0.01 - 10 GeV
+Delta E=0.001
+#step size for event generation with variable initial-state energy
+#valid steps are 1e-4, 1e-3 and 1e-2 GeV

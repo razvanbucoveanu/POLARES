@@ -1,0 +1,16 @@
+noinst_LTLIBRARIES = libFork.la libForkU.la libGlobal.la libGlobalU.la libData.la
+
+libFork_la_SOURCES = Fork.c
+libFork_la_CPPFLAGS = -DNOUNDERSCORE
+
+libForkU_la_SOURCES = Fork.c
+
+libGlobal_la_SOURCES = Global.c
+libGlobal_la_CPPFLAGS = -DNOUNDERSCORE
+
+libGlobalU_la_SOURCES = Global.c
+
+libData_la_SOURCES = Data.c
+
+EXTRA_DIST = stddecl.h sock.h CSample.c ChiSquare.c Erf.c Parallel.c Random.c
+

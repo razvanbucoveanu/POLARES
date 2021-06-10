@@ -1,0 +1,10 @@
+<map id="POLARES::Cross_Sections" name="POLARES::Cross_Sections">
+<area shape="rect" id="node2" href="$classPOLARES_1_1Melem.html" title="POLARES::Melem" alt="" coords="605,41,737,68"/>
+<area shape="rect" id="node3" href="$classPOLARES_1_1Parameters.html" title="POLARES::Parameters" alt="" coords="313,41,473,68"/>
+<area shape="rect" id="node9" href="$classPOLARES_1_1Melem__pol.html" title="POLARES::Melem_pol" alt="" coords="593,92,749,119"/>
+<area shape="rect" id="node5" href="$classPOLARES_1_1Interpolation.html" title="POLARES::Interpolation" alt="" coords="589,143,753,169"/>
+<area shape="rect" id="node6" href="$classPOLARES_1_1Virtual__Corrections.html" title="POLARES::Virtual_Corrections" alt="" coords="569,193,773,220"/>
+<area shape="rect" id="node7" href="$classPOLARES_1_1Gamma__Loop.html" title="POLARES::Gamma_Loop" alt="" coords="305,193,480,220"/>
+<area shape="rect" id="node8" href="$classPOLARES_1_1Scalar__Integrals.html" title="POLARES::Scalar_Integrals" alt="" coords="5,193,192,220"/>
+<area shape="rect" id="node10" href="$classPOLARES_1_1Form__factors.html" title="POLARES::Form_factors" alt="" coords="586,244,757,271"/>
+</map>

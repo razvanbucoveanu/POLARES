@@ -1,0 +1,14 @@
+ACLOCAL_AMFLAGS = -I m4
+SUBDIRS = src
+
+#Cuba
+noinst_LTLIBRARIES = libcuba.la
+libcuba_la_SOURCES = cuba.h
+libcuba_la_LIBADD = src/libCommon.la src/libCuhre.la src/libDivonne.la src/libSuave.la src/libVegas.la
+
+#EXTRA_DIST = cuba.pdf
+
+#test
+noinst_PROGRAMS = test
+test_SOURCES = demo/demo-c.c
+test_LDADD = libcuba.la

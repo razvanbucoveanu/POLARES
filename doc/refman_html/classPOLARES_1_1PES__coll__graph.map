@@ -1,0 +1,17 @@
+<map id="POLARES::PES" name="POLARES::PES">
+<area shape="rect" id="node2" href="$classPOLARES_1_1Interpolation.html" title="POLARES::Interpolation" alt="" coords="671,101,835,128"/>
+<area shape="rect" id="node3" href="$classPOLARES_1_1Integrands.html" title="POLARES::Integrands" alt="" coords="1408,275,1563,301"/>
+<area shape="rect" id="node5" href="$classPOLARES_1_1Cross__Sections.html" title="POLARES::Cross_Sections" alt="" coords="1099,227,1285,253"/>
+<area shape="rect" id="node4" href="$classPOLARES_1_1Rand.html" title="POLARES::Rand" alt="" coords="1130,283,1254,309"/>
+<area shape="rect" id="node6" href="$classPOLARES_1_1Melem.html" title="POLARES::Melem" alt="" coords="687,264,819,291"/>
+<area shape="rect" id="node7" href="$classPOLARES_1_1Parameters.html" title="POLARES::Parameters" alt="" coords="313,377,473,404"/>
+<area shape="rect" id="node12" href="$classPOLARES_1_1Melem__pol.html" title="POLARES::Melem_pol" alt="" coords="675,377,831,404"/>
+<area shape="rect" id="node16" href="$classPOLARES_1_1Cuba__parameters.html" title="POLARES::Cuba_parameters" alt="" coords="879,504,1075,531"/>
+<area shape="rect" id="node17" href="$classPOLARES_1_1Input.html" title="POLARES::Input" alt="" coords="504,547,627,573"/>
+<area shape="rect" id="node9" href="$classPOLARES_1_1Virtual__Corrections.html" title="POLARES::Virtual_Corrections" alt="" coords="651,163,855,189"/>
+<area shape="rect" id="node10" href="$classPOLARES_1_1Gamma__Loop.html" title="POLARES::Gamma_Loop" alt="" coords="305,163,480,189"/>
+<area shape="rect" id="node11" href="$classPOLARES_1_1Scalar__Integrals.html" title="POLARES::Scalar_Integrals" alt="" coords="5,163,192,189"/>
+<area shape="rect" id="node13" href="$classPOLARES_1_1Form__factors.html" title="POLARES::Form_factors" alt="" coords="667,213,838,240"/>
+<area shape="rect" id="node14" href="$classPOLARES_1_1Final__State.html" title="POLARES::Final_State" alt="" coords="1113,412,1271,439"/>
+<area shape="rect" id="node15" href="$classPOLARES_1_1Output.html" title="POLARES::Output" alt="" coords="1419,463,1551,489"/>
+</map>

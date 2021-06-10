@@ -1,0 +1,15 @@
+noinst_LTLIBRARIES = libnlVegas.la libllVegas.la libnlVegasU.la libllVegasU.la
+
+libnlVegas_la_SOURCES = Vegas.c
+libnlVegas_la_CPPFLAGS = -DNOUNDERSCORE -I$(top_srcdir)/src/common
+
+libllVegas_la_SOURCES =  Vegas.c
+libllVegas_la_CPPFLAGS = -DNOUNDERSCORE -DLONGLONGINT -I$(top_srcdir)/src/common
+
+libnlVegasU_la_SOURCES = Vegas.c
+libnlVegasU_la_CPPFLAGS = -I$(top_srcdir)/src/common
+
+libllVegasU_la_SOURCES = Vegas.c
+libllVegasU_la_CPPFLAGS = -DLONGLONGINT -I$(top_srcdir)/src/common
+
+EXTRA_DIST = common.c decl.h Grid.c Integrate.c

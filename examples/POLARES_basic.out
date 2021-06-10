@@ -1,0 +1,47 @@
+################################################################################
+##
+##                            POLARES 1.0
+##
+##       Radiative Corrections for Polarized Electron-Proton Scattering     
+##
+##                              R.-D. Bucoveanu                             
+##
+##                         Mon Apr  8 17:14:31 2019
+################################################################################
+##                                  Input                                   
+##
+## [General Input]                                                          
+## Type of incident lepton = electron
+## Incident lepton energy = 0.155 GeV
+## Lower cut-off value for the photon energy (Delta) = 1 MeV
+## Type of cuts for elastic scattering = Scattering angle (theta_l) cuts
+## theta_l min = 25 degrees
+## theta_l max = 45 degrees
+## Form factor parametrization = Simple Dipole
+## Degree of Polarization = 100%
+## Calculate the asymmetry = no
+## Maximum number of evaluations for 1st order = 10000000
+## Minimum number of evaluations = 100000
+## Relative accuracy = 1e-100
+## Number of cores = 4
+## Seed = 1
+##
+## [E_gamma < Delta]
+## Vacuum Polarization = no contribution
+## Two-photon exchange correction (TPE) = no contribution
+##
+## [E_gamma > Delta]
+## Type of Bremsstrahlung = 1st order
+## E_gamma max = 0.11 GeV
+## E' min = 0.045 GeV
+## E' max = 0.154 GeV
+## theta_gamma min = 0 degrees
+## theta_gamma max = 180 degrees
+################################################################################
+##                   Numerical integration results                          
+##
+## Sigma Born = 34539.258512407 +- 0.10093539108985 nb
+## Sigma soft-photon 1st order = 28171.06423837 +- 0.082349501673716 nb
+## Sigma hard-photon 1st order= 7679.3167546574 +- 7.6492911806365 nb
+## Sigma unpolarized 1st order= 35850.380993027 +- 7.6497344402658 nb
+################################################################################
