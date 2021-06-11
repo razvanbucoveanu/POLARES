@@ -15,3 +15,5 @@ This approximation may not be valid for muon scattering at low energies.
 
 For more details about the program and instructions on how to install and use it please consult 
 the manual found in the /doc folder. 
+
+The present version is preliminary. 
