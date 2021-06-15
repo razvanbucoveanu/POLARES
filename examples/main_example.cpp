@@ -38,12 +38,10 @@ int main()
 	cin>>input_file;
 
 	time(&time_start);
-	char* dt = ctime(&time_start); // Current time
 //	Output
 	//-------------------------------------------------------------------------------------------------
 //	Precision of output
 	using namespace POLARES;
-
 //	input class declaration
 	Input input;
 	input.input_file = input_file;
@@ -80,6 +78,8 @@ int main()
 	cout.precision(14);
 	cout <<"################################################################################\n"
 			<<"                     Numerical integration results                          \n\n";
+	if (pes.output.sigma_unpol_born != 0) cout << "Sigma unpol Born = " << pes.output.sigma_unpol_born
+			<< " +- " << pes.errors.sigma_unpol_born<< endl;
 	if (pes.output.sigma_unpol_elastic_1st != 0) cout << "Sigma unpol soft-photon 1st order = " << pes.output.sigma_unpol_elastic_1st
 			<< " +- " << pes.errors.sigma_unpol_elastic_1st << endl;
 	if (pes.output.sigma_unpol_elastic_2nd != 0) cout << "Sigma unpol soft-photon 2nd order = " << pes.output.sigma_unpol_elastic_2nd
@@ -102,8 +102,6 @@ int main()
 			<< " +- " << pes.errors.sigma_unpol_2nd << endl;
 	if (pes.output.sigma_unpol_2nd_add != 0) cout << "Sigma hard-photon + soft photon additional = " << pes.output.sigma_unpol_2nd_add
 			<< " +- " << pes.errors.sigma_unpol_2nd_add << endl;
-	if (pes.output.sigma_unpol_born != 0) cout << "Sigma unpol Born = " << pes.output.sigma_unpol_born
-			<< " +- " << pes.errors.sigma_unpol_born<< endl;
 	if (pes.output.sigma_pol_elastic_1st != 0) cout << "Sigma pol soft-photon 1st order = " << pes.output.sigma_pol_elastic_1st
 			<< " +- " << pes.errors.sigma_pol_elastic_1st << endl;
 	if (pes.output.sigma_pol_elastic_2nd != 0) cout << "Sigma pol soft-photon 2nd order = " << pes.output.sigma_pol_elastic_2nd
@@ -132,7 +130,7 @@ int main()
 	time(&time_events);
 	cout<<"\nInitialization Time: "<<difftime(time_events,time_start)<<" seconds "<<"\n\n";
 
-	cout << "NLO = " << pes.output.sigma_unpol_1st - pes.output.sigma_unpol_born <<"\n";
+//	cout << "NLO = " << pes.output.sigma_unpol_1st - pes.output.sigma_unpol_born <<"\n";
 
 //	Warning!
 	//Current version of event generator works only for energies between 20 and 200 MeV with an increment of 0.1 MeV
@@ -149,7 +147,7 @@ int main()
 			if (pes.change_energy_events(E))
 			pes.events();
 
-			fprintf(fout, "%d %8.4lf %8.7lf %6.4lf %7.4lf %8.4lf %6.4lf %7.4lf %8.4lf %6.4lf %7.4lf "
+			fprintf(fout, "%lld %8.4lf %8.7lf %6.4lf %7.4lf %8.4lf %6.4lf %7.4lf %8.4lf %6.4lf %7.4lf "
 					"%8.4lf %6.4lf %7.4lf %4.10lf \n",
 					pes.FS.event_no,
 					pes.FS.E, pes.FS.E_prime_l, pes.FS.theta_l, pes.FS.phi_l,

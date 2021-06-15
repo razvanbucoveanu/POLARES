@@ -2350,18 +2350,18 @@ long double Cross_Sections::crsect_brems_2nd_add_phig1 (const long double en1, c
 // Bremsstrahlung Cross Section for the interference term between weak and gamma exchange
 long double Cross_Sections::interf_brems_1st (const long double en1, const long double thl, const long double eg, const long double thg) const{
 
-	long double q2, Q2, l2k, Q2e, S1, S2;
+	double q2, Q2, l2k, Q2e, S1, S2;
 
-	l2 = sqrt(pow(en1,2.)-m2);
+	l2 = sqrt(pow(en1,2)-m2);
 
 	a = M*(param->en-en1-eg)-param->en*en1+param->l1*l2*cos(thl)-
 			param->en*eg+param->l1*eg*cos(thg)+en1*eg-eg*l2*cos(thl)*cos(thg)+m2;
 	b = eg*l2*sin(thl)*sin(thg);
-	phig = a/b;       //calculates the cosine of the phi angle of the photon using 4.27 and 4.28
+	phig = a/b;       //calculates the cosine of the phi angle of the photon using 4.2.7 and 4.2.8
 
 	phig = acos(phig);
 
-	l1k = param->en*eg - param->l1*eg*cos(thg); //the product between the 4.-momenta of the initial electron and final photon
+	l1k = param->en*eg - param->l1*eg*cos(thg); //the product between the 4-momenta of the initial electron and final photon
 
 	Q2e = - 2. * (m2 - param->en*en1 + param->l1 * l2 * cos(thl));
 	S1 = en1 * M;
@@ -2371,11 +2371,11 @@ long double Cross_Sections::interf_brems_1st (const long double en1, const long 
 	Q2 = -q2;
 	tau = Q2/(4.*M2);
 
-	long double ga = -1./2.;
-	long double gv = -1./2. + 2.*param->sw2;
+	double ga = -1./2.;
+	double gv = -1./2. + 2.*param->sw2;
 
 	if (param->flag[param->kappa_weak] == 1) {
-		long double kappa = VC.kappa_weak(Q2);
+		double kappa = VC.kappa_weak(Q2);
 		gv = -1./2. + 2.*kappa*param->sw2;
 
 		ff.ffz (Q2, gpze, gpzm, kappa, param->sw2);
@@ -2390,7 +2390,7 @@ long double Cross_Sections::interf_brems_1st (const long double en1, const long 
 	f2z = (gpzm-gpze)/(1.+tau);
 	f1z = (gpze+tau*gpzm)/(1.+tau);
 
-	long double sp1, sp2, sl2, sk;
+	double sp1, sp2, sl2, sk;
 
 	sp1 = M*param->l1/m;
 	sl2 = (param->l1*en1 - l2*param->en*cos(thl))/m;
@@ -2398,82 +2398,82 @@ long double Cross_Sections::interf_brems_1st (const long double en1, const long 
 	sp2 = (param->l1 * (param->en - en1 - eg + M) - param->en * (param->l1 - l2*cos(thl) - eg * cos(thg)))/m;
 
 	//matrix element squared expressed in l1k, l2k, q2, eg, param->en and en1 (found in "bremsstrahlung_matrix_element.pdf" document)
-	melem_interf = (m*pow(l1k,-2.)*pow(M,-2.)*pow(2.*l1k - Q2 + Q2e,-2.)*
-		     (f2*(4.*gae*gv*Q2*M2*(-2.*l1k*(Q2 - Q2e)*
-		              (3.*Q2*sk + 4.*S1*sk - 4.*S2*sk - Q2*sl2 - Q2e*sl2 + 4.*S2*sl2 -
-		                2.*Q2e*sp1 - 2.*Q2e*sp2) +
-		             4.*(Q2*(2.*sk - sl2) + 4.*S2*(-sk + sl2) - Q2e*(sl2 + 2.*(sp1 + sp2)))*
-		              pow(l1k,2.) + (Q2*sk + 2.*(2.*S1*sk + (sp1 + sp2)*m2))*
-		              pow(Q2 - Q2e,2.)) + 4.*f1z*ga*M2*
-		           (2.*l1k*Q2*(Q2 - Q2e)*(Q2*(3.*sk - sl2) - Q2e*(sk + sp1 - sp2)) +
-		             4.*(Q2*(3.*sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*
-		              pow(l1k,3.) - Q2*(Q2*sk + (sk + sl2 + sp1 - sp2)*m2)*
-		              pow(Q2 - Q2e,2.) + 2.*pow(l1k,2.)*
-		              (2.*Q2*Q2e*(2.*sk - sl2 + 2.*sp1 - 2.*sp2) +
-		                (-7*sk + 3.*sl2 - sp1 + sp2)*pow(Q2,2.) +
-		                (sk + sl2 - sp1 + sp2)*pow(Q2e,2.))) +
-		          f2z*ga*(4.*pow(l1k,3.)*(-(Q2*
-		                   (-4.*S2*sl2 + Q2*(sk + sl2 + sp1 + sp2) +
+	melem_interf = (m*pow(l1k,-2)*pow(M,-2)*pow(2*l1k - Q2 + Q2e,-2)*
+		     (f2*(4*gae*gv*Q2*M2*(-2*l1k*(Q2 - Q2e)*
+		              (3*Q2*sk + 4*S1*sk - 4*S2*sk - Q2*sl2 - Q2e*sl2 + 4*S2*sl2 -
+		                2*Q2e*sp1 - 2*Q2e*sp2) +
+		             4*(Q2*(2*sk - sl2) + 4*S2*(-sk + sl2) - Q2e*(sl2 + 2*(sp1 + sp2)))*
+		              pow(l1k,2) + (Q2*sk + 2*(2*S1*sk + (sp1 + sp2)*m2))*
+		              pow(Q2 - Q2e,2)) + 4*f1z*ga*M2*
+		           (2*l1k*Q2*(Q2 - Q2e)*(Q2*(3*sk - sl2) - Q2e*(sk + sp1 - sp2)) +
+		             4*(Q2*(3*sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*
+		              pow(l1k,3) - Q2*(Q2*sk + (sk + sl2 + sp1 - sp2)*m2)*
+		              pow(Q2 - Q2e,2) + 2*pow(l1k,2)*
+		              (2*Q2*Q2e*(2*sk - sl2 + 2*sp1 - 2*sp2) +
+		                (-7*sk + 3*sl2 - sp1 + sp2)*pow(Q2,2) +
+		                (sk + sl2 - sp1 + sp2)*pow(Q2e,2))) +
+		          f2z*ga*(4*pow(l1k,3)*(-(Q2*
+		                   (-4*S2*sl2 + Q2*(sk + sl2 + sp1 + sp2) +
 		                     Q2e*(sk + sl2 + sp1 + sp2))) +
-		                4.*(Q2*(sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*M2
-		                ) + Q2*(-2.*sk*(2.*S1*(Q2 + 2.*S1) + Q2*M2) +
+		                4*(Q2*(sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*M2
+		                ) + Q2*(-2*sk*(2*S1*(Q2 + 2*S1) + Q2*M2) +
 		                m2*(Q2*(sk + sl2 - sp1 - sp2) -
-		                   4.*(S1*(sp1 + sp2) + (sp1 - sp2)*M2)))*pow(Q2 - Q2e,2.) +
-		             2.*pow(l1k,2.)*(-4.*M2*
-		                 (Q2*Q2e*(3.*sl2 - 4.*sp1 + 4.*sp2) +
-		                   (3.*sk - 2.*sl2 + sp1 - sp2)*pow(Q2,2.) -
-		                   (sk + sl2 - sp1 + sp2)*pow(Q2e,2.)) +
-		                Q2*(-1.6*S1*S2*sl2 +
-		                   4.*Q2*(S2*(-2.*sl2 + sp1 + sp2) + S1*(-2.*sk + sl2 + sp1 + sp2)) +
-		                   4.*Q2e*(S2*sl2 + S1*(2.*sk + sl2 + sp1 + sp2)) +
-		                   (sk + sl2 + sp1 + sp2)*pow(Q2,2.) -
-		                   (sk + sl2 + sp1 + sp2)*pow(Q2e,2.))) +
-		             4.*l1k*Q2*(Q2 - Q2e)*(-2.*Q2e*S1*sk - Q2e*S1*sl2 + 4.*S1*S2*sl2 -
-		                Q2e*S1*sp1 - Q2e*S1*sp2 - 2.*S2*sp1*m2 - 2.*S2*sp2*m2 +
-		                Q2*(S1*(4.*sk - sl2 - sp1 - sp2) + S2*(sl2 - sp1 - sp2) +
+		                   4*(S1*(sp1 + sp2) + (sp1 - sp2)*M2)))*pow(Q2 - Q2e,2) +
+		             2*pow(l1k,2)*(-4*M2*
+		                 (Q2*Q2e*(3*sl2 - 4*sp1 + 4*sp2) +
+		                   (3*sk - 2*sl2 + sp1 - sp2)*pow(Q2,2) -
+		                   (sk + sl2 - sp1 + sp2)*pow(Q2e,2)) +
+		                Q2*(-16*S1*S2*sl2 +
+		                   4*Q2*(S2*(-2*sl2 + sp1 + sp2) + S1*(-2*sk + sl2 + sp1 + sp2)) +
+		                   4*Q2e*(S2*sl2 + S1*(2*sk + sl2 + sp1 + sp2)) +
+		                   (sk + sl2 + sp1 + sp2)*pow(Q2,2) -
+		                   (sk + sl2 + sp1 + sp2)*pow(Q2e,2))) +
+		             4*l1k*Q2*(Q2 - Q2e)*(-2*Q2e*S1*sk - Q2e*S1*sl2 + 4*S1*S2*sl2 -
+		                Q2e*S1*sp1 - Q2e*S1*sp2 - 2*S2*sp1*m2 - 2*S2*sp2*m2 +
+		                Q2*(S1*(4*sk - sl2 - sp1 - sp2) + S2*(sl2 - sp1 - sp2) +
 		                   (sp1 + sp2)*m2) +
-		                (Q2*(3.*sk - sl2) + Q2e*(sl2 - 2.*sp1 + 2.*sp2))*M2 +
-		                4.*sk*pow(S1,2.)))) -
-		       4.*f1*M2*(-(gae*gv*Q2*
-		             (-2.*l1k*(Q2 - Q2e)*(3.*Q2*sk + 4.*S1*sk - 4.*S2*sk - Q2*sl2 - Q2e*sl2 +
-		                  4.*S2*sl2 - 2.*Q2e*sp1 - 2.*Q2e*sp2) +
-		               4.*(Q2*(2.*sk - sl2) + 4.*S2*(-sk + sl2) - Q2e*(sl2 + 2.*(sp1 + sp2)))*
-		                pow(l1k,2.) + (Q2*sk + 2.*(2.*S1*sk + (sp1 + sp2)*m2))*
-		                pow(Q2 - Q2e,2.))) +
-		          f2z*ga*(-2.*l1k*Q2*(Q2 - Q2e)*(Q2*(3.*sk - sl2) - Q2e*(sk + sp1 - sp2)) -
-		             4.*(Q2*(3.*sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*
-		              pow(l1k,3.) + Q2*(Q2*sk + (sk + sl2 + sp1 - sp2)*m2)*
-		              pow(Q2 - Q2e,2.) + 2.*pow(l1k,2.)*
-		              (2.*Q2*Q2e*(-2.*sk + sl2 - 2.*sp1 + 2.*sp2) +
-		                (7*sk - 3.*sl2 + sp1 - sp2)*pow(Q2,2.) -
-		                (sk + sl2 - sp1 + sp2)*pow(Q2e,2.))) +
-		          f1z*ga*(8*pow(l1k,3.)*(-2.*S2*sl2 + Q2e*sp1 + Q2*(-sk + sl2 + sp2) +
-		                4.*sk*M2) -
-		             4.*pow(l1k,2.)*(4.*Q2e*S1*sk + 2.*Q2e*S1*sl2 + 2.*Q2e*S2*sl2 - 8*S1*S2*sl2 +
-		                2.*Q2e*S1*sp1 + 2.*Q2e*S1*sp2 +
-		                Q2*(Q2e*(2.*sk - sl2 + 2.*sp1 - 2.*sp2) +
-		                   2.*(S2*(-2.*sl2 + sp1 + sp2) + S1*(-2.*sk + sl2 + sp1 + sp2))) +
-		                (Q2*(8*sk - 2.*sl2) - 2.*Q2e*(4.*sk + sl2))*M2 +
-		                (-3.*sk + 2.*sl2 + sp2)*pow(Q2,2.) - sp1*pow(Q2e,2.)) +
-		             pow(Q2 - Q2e,2.)*(m2*
-		                 (2.*Q2*sp1 + 4.*S1*(sp1 + sp2) - 4.*(sk + sl2)*M2) +
-		                sk*(4.*Q2*S1 - 2.*Q2*M2 + pow(Q2,2.) + 8*pow(S1,2.))) +
-		             2.*l1k*(Q2 - Q2e)*(Q2*(Q2e*(sk + sp1 - sp2) +
-		                   2.*(S2*(-sl2 + sp1 + sp2) + S1*(-4.*sk + sl2 + sp1 + sp2) -
+		                (Q2*(3*sk - sl2) + Q2e*(sl2 - 2*sp1 + 2*sp2))*M2 +
+		                4*sk*pow(S1,2)))) -
+		       4*f1*M2*(-(gae*gv*Q2*
+		             (-2*l1k*(Q2 - Q2e)*(3*Q2*sk + 4*S1*sk - 4*S2*sk - Q2*sl2 - Q2e*sl2 +
+		                  4*S2*sl2 - 2*Q2e*sp1 - 2*Q2e*sp2) +
+		               4*(Q2*(2*sk - sl2) + 4*S2*(-sk + sl2) - Q2e*(sl2 + 2*(sp1 + sp2)))*
+		                pow(l1k,2) + (Q2*sk + 2*(2*S1*sk + (sp1 + sp2)*m2))*
+		                pow(Q2 - Q2e,2))) +
+		          f2z*ga*(-2*l1k*Q2*(Q2 - Q2e)*(Q2*(3*sk - sl2) - Q2e*(sk + sp1 - sp2)) -
+		             4*(Q2*(3*sk - sl2 + sp1 - sp2) + Q2e*(sk + sl2 - sp1 + sp2))*
+		              pow(l1k,3) + Q2*(Q2*sk + (sk + sl2 + sp1 - sp2)*m2)*
+		              pow(Q2 - Q2e,2) + 2*pow(l1k,2)*
+		              (2*Q2*Q2e*(-2*sk + sl2 - 2*sp1 + 2*sp2) +
+		                (7*sk - 3*sl2 + sp1 - sp2)*pow(Q2,2) -
+		                (sk + sl2 - sp1 + sp2)*pow(Q2e,2))) +
+		          f1z*ga*(8*pow(l1k,3)*(-2*S2*sl2 + Q2e*sp1 + Q2*(-sk + sl2 + sp2) +
+		                4*sk*M2) -
+		             4*pow(l1k,2)*(4*Q2e*S1*sk + 2*Q2e*S1*sl2 + 2*Q2e*S2*sl2 - 8*S1*S2*sl2 +
+		                2*Q2e*S1*sp1 + 2*Q2e*S1*sp2 +
+		                Q2*(Q2e*(2*sk - sl2 + 2*sp1 - 2*sp2) +
+		                   2*(S2*(-2*sl2 + sp1 + sp2) + S1*(-2*sk + sl2 + sp1 + sp2))) +
+		                (Q2*(8*sk - 2*sl2) - 2*Q2e*(4*sk + sl2))*M2 +
+		                (-3*sk + 2*sl2 + sp2)*pow(Q2,2) - sp1*pow(Q2e,2)) +
+		             pow(Q2 - Q2e,2)*(m2*
+		                 (2*Q2*sp1 + 4*S1*(sp1 + sp2) - 4*(sk + sl2)*M2) +
+		                sk*(4*Q2*S1 - 2*Q2*M2 + pow(Q2,2) + 8*pow(S1,2))) +
+		             2*l1k*(Q2 - Q2e)*(Q2*(Q2e*(sk + sp1 - sp2) +
+		                   2*(S2*(-sl2 + sp1 + sp2) + S1*(-4*sk + sl2 + sp1 + sp2) -
 		                      (sp1 + sp2)*m2)) +
-		                (Q2*(6*sk - 2.*sl2) - 2.*Q2e*(2.*sk + sl2))*M2 +
-		                (-3.*sk + sl2)*pow(Q2,2.) +
-		                2.*(Q2e*S1*(2.*sk + sl2 + sp1 + sp2) +
-		                   2.*(-2.*S1*S2*sl2 + S2*(sp1 + sp2)*m2 - 2.*sk*pow(S1,2.))))))))/2.;
+		                (Q2*(6*sk - 2*sl2) - 2*Q2e*(2*sk + sl2))*M2 +
+		                (-3*sk + sl2)*pow(Q2,2) +
+		                2*(Q2e*S1*(2*sk + sl2 + sp1 + sp2) +
+		                   2*(-2*S1*S2*sl2 + S2*(sp1 + sp2)*m2 - 2*sk*pow(S1,2))))))))/2.;
 
 	melem_interf *= - 2.*gf*pow(4.*pi*alpha,2.)/(sqrt(2.)*q2);
 
 	x = sin(thl) * sin(thg) * sin(phig);
 
-	s =  melem_interf / (32. * pow(2.*pi,4.) * M * param->l1 * x); //final cross section formula calculated with 4.29
+	s =  melem_interf / (32. * pow(2.*pi,4.) * M * param->l1 * x); //final cross section formula calculated with 4.2.9
 
-	if (param->flag[param->order] == 2.) {
-		s *=  1. + VC.d_brems_ee(Q2e, en1) + VC.d_vert_pol(Q2, f1, f2, f1z, f2z, gae, ga, gv);
+	if (param->flag[param->order] == 2) {
+		s *=  1. + VC.d_brems_ee(Q2) + VC.d_vert_pol(Q2, f1, f2, f1z, f2z, gae, ga, gv);
 	}
 
 	if (s != s ) std::cout<<"Warning! The Cross Section is not a real number"<<"\n"; //checks if s is a real number

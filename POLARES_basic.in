@@ -5,7 +5,7 @@
 
 Incident Lepton Energy=0.155
 
-Delta=0.001
+Delta=0.01
 #Lower Cut-off for photon energy
 
 E' min=0.045
@@ -34,11 +34,11 @@ Asymmetry=1
 #Input for numerical integration (see the Cuba documentation for details)
 #Common input for all integration methods
 
-Maximum Number of Evaluations 1st=10000000
+Maximum Number of Evaluations 1st=100000000
 #Number of integrand evaluations for the 1st order
 #hard-photon bremsstrahlung correction
 
-Maximum Number of Evaluations 2nd=10000000
+Maximum Number of Evaluations 2nd=100000000
 #Number of integrand evaluations for the 2nd order
 #hard-photon bremsstrahlung correction
 

@@ -20,12 +20,6 @@ Incident Lepton Energy=0.155
 Delta=0.01
 #Lower Cut-off for photon energy
 
-Type of Delta Cut=0
-# 0 - Photon energy cut-off in the lab frame
-# 1 - Photon energy cut-off in the CM frame
-#In this version it is implemented only 
-#for the process (mu e -> mu e gamma)
-
 Type of Cuts=0
 #Type of limits for elastic scattering
 # 0 - Limits given for scattering angle
@@ -70,10 +64,10 @@ Leading Order=1
 #Input for numerical integration (see the Cuba documentation for details)
 #Common input for all integration methods
 
-Maximum Number of Evaluations LO=10000000
+Maximum Number of Evaluations LO=100000000
 #Number of integrand evaluations for the leading order
 
-Maximum Number of Evaluations 1st=100000000
+Maximum Number of Evaluations 1st=200000000
 #Number of integrand evaluations for the 1st order
 #hard-photon bremsstrahlung correction
 
@@ -139,7 +133,7 @@ Order SP_loop=1
 # (in case hard-photon bremsstrahlung (HP) is included the choice 2 adds also
 # 1loop*1HP + 1SP*1HP corrections)
 
-Vacuum Polarization=0
+Vacuum Polarization=4
 # 0 - not included
 # 1 - only electron-positron loops
 # 2 - full leptonic contributions
@@ -161,7 +155,7 @@ Two-photon exchange=0
 # only available for P2 kinematics)
 
 #weak corrections
-Kappa Form Factor=0
+Kappa Form Factor=1
 # 0 - no contribution
 # 1 - full contribution
 
@@ -185,14 +179,14 @@ Bremsstrahlung Type=1
 # 7 - 1st order 2-fold differential in theta_l and E'
 # 8 - 1st order 3-fold differential in theta_l, theta_gamma and phi_gamma
 
-Bremsstrahlung Add=1
+Bremsstrahlung Add=0
 #Additional non-infrared contribution to 1hg+1sg
 #works only with Order 'SP_loop=2' and with
 #'Bremsstrahlung Type=1 or 2'
 # 0 - not included
 # 1 - included
 
-Gamma Loop=0
+Gamma Loop=1
 #Additional information for 1loop*1HP correction
 # 0 - Exact calculation
 # 1 - Approximation

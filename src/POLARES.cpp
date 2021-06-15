@@ -127,11 +127,23 @@ int PES::initialization(){
 
 		std::cout << "Numerical integration for the LO unpolarized cross-section ... ";
 
+		if (param.flag[param.int_method] == 0) {
+
 		llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_born,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
+		}
+
+		if (param.flag[param.int_method] == 1) {
+
+				llSuave(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_born,
+						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags | 4, CP.SEED,
+						CP.MINEVAL, CP.MAXEVAL_LO, CP.NNEW, CP.NMIN, CP.FLATNESS,
+						CP.STATEFILE, CP.SPIN,
+						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
+		}
 
 		std::cout <<"completed\n";
 
@@ -249,29 +261,29 @@ int PES::initialization(){
 			}
 
 			if (param.flag[param.PS] == 1) {
-//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
-//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
-//						&CP.neval, &CP.fail, integral, error, prob);
-//
-//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
-//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
-//						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
-//						&CP.neval, &CP.fail, integral, error, prob);
-
-				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
+				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 
-				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
+				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+
+//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
+//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+//						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
+//						&CP.neval, &CP.fail, integral, error, prob);
+//
+//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
+//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
+//						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
+//						&CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
 
@@ -3244,14 +3256,14 @@ void PES::set_final_state() {
 
 	double p2 = sqrt(pow(FS.E_p,2.) - M2);
 
-	if (FS.E_gamma_prime != 0 && FS.phi_gamma < 0.) FS.phi_gamma += 2.*pi;
-	if (FS.E_gamma_prime != 0 && FS.phi_gamma_prime < 0.) FS.phi_gamma_prime += 2.*pi;
+//	if (FS.E_gamma_prime != 0 && FS.phi_gamma < 0.) FS.phi_gamma += 2.*pi;
+//	if (FS.E_gamma_prime != 0 && FS.phi_gamma_prime < 0.) FS.phi_gamma_prime += 2.*pi;
 
-	if (FS.E_gamma != 0 && FS.E_gamma_prime != 0)
-		if (rand.uniform() > 0.5) {
-			FS.phi_gamma_prime = 2.*pi - FS.phi_gamma_prime;
-			FS.phi_gamma = 2.*pi - FS.phi_gamma;
-		}
+//	if (FS.E_gamma != 0 && FS.E_gamma_prime != 0)
+//		if (rand.uniform() > 0.5) {
+//			FS.phi_gamma_prime = 2.*pi - FS.phi_gamma_prime;
+//			FS.phi_gamma = 2.*pi - FS.phi_gamma;
+//		}
 	if (FS.E_gamma != 0 && FS.E_gamma_prime == 0)
 		if (rand.uniform() > 0.5) FS.phi_gamma = 2.*pi - FS.phi_gamma;
 
@@ -3336,6 +3348,8 @@ void PES::write_output() {
 				<<"## Type of incident lepton = ";
 		if (param.flag[param.lepton] == 0) out<<"electron\n";
 		if (param.flag[param.lepton] == 1) out<<"positron\n";
+		if (param.flag[param.lepton] == 2) out<<"muon\n";
+		if (param.flag[param.lepton] == 3) out<<"anti-muon\n";
 		out	<<"## Type of target particle = ";
 		if (param.flag[param.target] == 0) out<<"proton\n";
 		if (param.flag[param.target] == 1) out<<"carbon-12\n";
@@ -3350,8 +3364,8 @@ void PES::write_output() {
 		}
 		if (param.flag[param.cuts_born] == 1) {
 			out <<"Q^2 cuts\n";
-			out <<"Q^2 min = "<<param.min[param.Q2_elastic]<<" GeV^2\n";
-			out <<"Q^2 max = "<<param.max[param.Q2_elastic]<<" GeV^2\n";
+			out <<"## Q^2 min = "<<param.min[param.Q2_elastic]<<" GeV^2\n";
+			out <<"## Q^2 max = "<<param.max[param.Q2_elastic]<<" GeV^2\n";
 		}
 		out <<"## Form factor parametrization = ";
 		if (param.flag[param.form_factors] == 0) out <<"Simple Dipole\n";
@@ -3382,10 +3396,13 @@ void PES::write_output() {
 		if (param.flag[param.vac_pol] == 0) out<<"no contribution\n";
 		if (param.flag[param.vac_pol] == 1) out<<"Only electron-positron loops\n";
 		if (param.flag[param.vac_pol] == 2) out<<"Full leptonic contributions\n";
-		if (param.flag[param.vac_pol] == 3) out<<"Hadronic contributions\n";
+		if (param.flag[param.vac_pol] == 3) out<<"Hadronic contributions (Ignatov)\n";
+		if (param.flag[param.vac_pol] == 4) out<<"Hadronic contributions (Jegerlehner))\n";
+		if (param.flag[param.vac_pol] == 5) out<<"Hadronic contributions (NKT18))\n";
 		out <<"## Two-photon exchange correction (TPE) = ";
 		if (param.flag[param.tpe] == 0) out<<"no contribution\n";
 		if (param.flag[param.tpe] == 1) out<<"Calculation for a point like particle (Feshbach term)\n";
+		if (param.flag[param.tpe] == 2) out<<"Tomalak total calculation\n";
 		out<<"##\n";
 		out <<"## [E_gamma > Delta]\n";
 		out <<"## Type of hard-photon bremsstrahlung = ";
@@ -3406,6 +3423,9 @@ void PES::write_output() {
 		out <<"##########################################################################\n"
 				<<"##                   Numerical integration results                          \n"
 				<<"##\n";
+		if (output.sigma_unpol_born != 0)
+			out <<"## Sigma unpol Born = " << output.sigma_unpol_born
+			<<" +- "<< errors.sigma_unpol_born << " nb\n";
 		if (output.sigma_unpol_elastic_1st != 0)
 			out <<"## Sigma unpol soft-photon 1st order = " << output.sigma_unpol_elastic_1st
 			<<" +- "<< errors.sigma_unpol_elastic_1st << " nb\n";
@@ -3427,9 +3447,6 @@ void PES::write_output() {
 		if (output.sigma_unpol_2nd != 0)
 			out <<"## Sigma unpol 2nd order = " << output.sigma_unpol_2nd
 			<<" +- "<< errors.sigma_unpol_2nd << " nb\n";
-		if (output.sigma_unpol_born != 0)
-			out <<"## Sigma unpol Born = " << output.sigma_unpol_born
-			<<" +- "<< errors.sigma_unpol_born << " nb\n";
 		if (output.sigma_pol_elastic_1st != 0)
 			out <<"## Sigma pol soft-photon 1st order = " << output.sigma_pol_elastic_1st
 			<<" +- "<< errors.sigma_pol_elastic_1st << " nb\n";
