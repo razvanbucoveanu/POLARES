@@ -2152,7 +2152,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2176,7 +2176,7 @@ int PES::events(){
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
-			FS.seed += 100;
+			FS.seed += 1e7;
 			FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 					                                          int(param.min[param.E]/param.Delta_E)];
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2192,7 +2192,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2212,7 +2212,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 1;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2233,7 +2233,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 0;
 			}
 			else if (r0 >= output.ev_brems_2nd[int(param.en/param.Delta_E) -
@@ -2252,7 +2252,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else {
@@ -2263,7 +2263,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2275,7 +2275,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2289,7 +2289,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 2;
 
 				}
@@ -2299,7 +2299,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 			}
@@ -2326,7 +2326,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2336,7 +2336,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 3;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2348,7 +2348,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 4;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2362,7 +2362,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 5;
 
 			}
@@ -2372,7 +2372,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 100;
+				FS.seed += 1e7;
 				FS.event_type = 6;
 			}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2388,7 +2388,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 3;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2400,7 +2400,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 4;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2414,7 +2414,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 5;
 
 				}
@@ -2424,7 +2424,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 100;
+					FS.seed += 1e7;
 					FS.event_type = 6;
 				}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -3397,7 +3397,7 @@ void PES::write_output() {
 		if (param.flag[param.vac_pol] == 1) out<<"Only electron-positron loops\n";
 		if (param.flag[param.vac_pol] == 2) out<<"Full leptonic contributions\n";
 		if (param.flag[param.vac_pol] == 3) out<<"Hadronic contributions (Ignatov)\n";
-		if (param.flag[param.vac_pol] == 4) out<<"Hadronic contributions (Jegerlehner))\n";
+		if (param.flag[param.vac_pol] == 4) out<<"Hadronic contributions (Jegerlehner)\n";
 		if (param.flag[param.vac_pol] == 5) out<<"Hadronic contributions (NKT18))\n";
 		out <<"## Two-photon exchange correction (TPE) = ";
 		if (param.flag[param.tpe] == 0) out<<"no contribution\n";

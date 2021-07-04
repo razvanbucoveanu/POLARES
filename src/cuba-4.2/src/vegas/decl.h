@@ -44,7 +44,8 @@ typedef struct _this {
 #endif
   real *frame;
   real epsrel, epsabs;
-  int flags, seed;
+  int flags;
+  long long int seed;
   number mineval, maxeval;
   number nstart, nincrease, nbatch;
   int gridno;
