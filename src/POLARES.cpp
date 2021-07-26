@@ -717,10 +717,10 @@ int PES::initialization(){
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
 
-		std::cout << sigma_hp_2nd_l1k1 << " +- " << sigma_hp_2nd_l1k1_error <<"\n";
-		std::cout << sigma_hp_2nd_l1k2 << " +- " << sigma_hp_2nd_l1k2_error <<"\n";
-		std::cout << sigma_hp_2nd_l2k1 << " +- " << sigma_hp_2nd_l2k1_error <<"\n";
-		std::cout << sigma_hp_2nd_l2k2 << " +- " << sigma_hp_2nd_l2k2_error <<"\n";
+//		std::cout << sigma_hp_2nd_l1k1 << " +- " << sigma_hp_2nd_l1k1_error <<"\n";
+//		std::cout << sigma_hp_2nd_l1k2 << " +- " << sigma_hp_2nd_l1k2_error <<"\n";
+//		std::cout << sigma_hp_2nd_l2k1 << " +- " << sigma_hp_2nd_l2k1_error <<"\n";
+//		std::cout << sigma_hp_2nd_l2k2 << " +- " << sigma_hp_2nd_l2k2_error <<"\n";
 
 		output.sigma_unpol_inelastic_2nd = sigma_hp_2nd_l1k1 + sigma_hp_2nd_l1k2 + sigma_hp_2nd_l2k1 + sigma_hp_2nd_l2k2;
 		errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_hp_2nd_l1k1_error,2.) + pow(sigma_hp_2nd_l1k2_error,2.)
@@ -2152,7 +2152,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2176,7 +2176,7 @@ int PES::events(){
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
-			FS.seed += 1e7;
+			// FS.seed += 1e7;
 			FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 					                                          int(param.min[param.E]/param.Delta_E)];
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2192,7 +2192,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2212,7 +2212,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2233,7 +2233,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 			}
 			else if (r0 >= output.ev_brems_2nd[int(param.en/param.Delta_E) -
@@ -2252,7 +2252,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else {
@@ -2263,7 +2263,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2275,7 +2275,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2289,7 +2289,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 
 				}
@@ -2299,7 +2299,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 			}
@@ -2326,7 +2326,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2336,7 +2336,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 3;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2348,7 +2348,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 4;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2362,7 +2362,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 5;
 
 			}
@@ -2372,7 +2372,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-				FS.seed += 1e7;
+				// FS.seed += 1e7;
 				FS.event_type = 6;
 			}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2388,7 +2388,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 3;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2400,7 +2400,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 4;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2414,7 +2414,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 5;
 
 				}
@@ -2424,7 +2424,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-					FS.seed += 1e7;
+					// FS.seed += 1e7;
 					FS.event_type = 6;
 				}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2432,6 +2432,7 @@ int PES::events(){
 	}
 
 	set_final_state();
+	if (FS.seed <= 1e7) FS.seed += 1e7;
 
 	return 0;
 

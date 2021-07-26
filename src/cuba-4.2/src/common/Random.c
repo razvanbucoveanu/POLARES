@@ -337,8 +337,10 @@ static inline void RanluxIni(This *t)
 
 static inline void IniRandom(This *t)
 {
+  if (t->seed <= 1e7) {
   if( t->seed == 0 ) SobolIni(t);
   else if( RNG == 0 ) MersenneIni(t);
   else RanluxIni(t);
+  }
 }
 
