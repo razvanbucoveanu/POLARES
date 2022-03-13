@@ -1729,11 +1729,11 @@ int PES::initialization(){
 	if (param.flag[param.brems] == 2 && param.flag[param.order] == 2) {
 
 		param.flag[param.order] = 1;
-		param.MAXEVAL_1st = param.maxeval_1st_aux;
+		CP.MAXEVAL_1st = param.maxeval_1st_aux;
 
 		llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_elastic,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-				CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+				CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
 
