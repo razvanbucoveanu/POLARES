@@ -115,7 +115,7 @@ int Parameters::read_input(const Input& input) {
 
 		}
 		else {
-		 ConfigFile CFile(input.input_file + ".in");
+		 ConfigFile CFile(input.input_file);
 
 		 CFile.readInto<double>(en,"Incident Lepton Energy", input.E);
 
