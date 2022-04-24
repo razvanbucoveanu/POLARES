@@ -1,4 +1,4 @@
-//-------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 // POLARES (Radiative Corrections to Polarized Electron-Proton Scattering)
 // is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by the
@@ -7,7 +7,10 @@
 //	R.-D. Bucoveanu and H. Spiesberger, Eur. Phys. J. A (2019) 55: 57
 //	arXiv:1811.04970 [hep-ph].
 // Copyright (c) Razvan Bucoveanu, 2019. E-mail: rabucove@uni-mainz.de
-//=================================================================================================
+//
+// Modified: 24.02.-05.03.2022 by HS
+//
+//================================================================================================
 #include "POLARES.h" // Main header file
 #include <cuba.h>
 #include <iostream>
@@ -15,7 +18,7 @@
 #include "const.h"
 #include <stdlib.h>
 #include "config.h"
-//----------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 
 using namespace POLARES;
 using namespace constants;
@@ -38,6 +41,7 @@ void PES::set_input(const Input& input){
 	M = param.M;
 	M2 = pow(M,2.);
 
+// Prepare to include hadronic vacuum polarization
 	if (param.flag[param.vac_pol] == 3) {
 		std::ifstream ifvpol("share/vp_Ignatov.dat");
 		if (!ifvpol) {
@@ -65,6 +69,7 @@ void PES::set_input(const Input& input){
 		}
 		interpolation.init_d_vac_hadr("share/vp_knt18.dat");
 	}
+// Prepare to include two-photon-exchange corrections
 	if (param.flag[param.tpe] == 2) {
 			std::ifstream iftpe("share/tpe_fwd.dat");
 			if (!iftpe) {
@@ -83,28 +88,8 @@ void PES::set_input(const Input& input){
 			}
 			interpolation.init_tpe_Tomalak("share/tpe_bwd.dat");
 		}
-
-//	if (param.flag[param.tpe] == 1) {
-//		if (param.flag[param.IS] == 1) {
-//			std::ifstream iftpe1("share/tpe1.dat");
-//			if (!iftpe1) {
-//				std::cerr<<"Error: 'tpe1.dat' cannot be found! "
-//						"Please copy it in the folder named 'share'.\n\n";
-//				exit (EXIT_FAILURE);
-//			}
-//			interpolation.init_tpe("share/tpe1.dat");
-//		}
-//		else if (param.flag[param.IS] == 2) {
-//			std::ifstream iftpe2("share/tpe2.dat");
-//			if (!iftpe2) {
-//				std::cerr<<"Error: 'tpe2.dat' cannot be found! "
-//						"Please copy it in the folder named 'share'.\n\n";
-//				exit (EXIT_FAILURE);
-//			}
-//			interpolation.init_tpe("share/tpe2.dat");
-//		}
-//	}
 }
+
 
 int PES::initialization(){
 
@@ -121,56 +106,85 @@ int PES::initialization(){
 	double sigma_hp_2nd_l1k1_error, sigma_hp_2nd_l1k2_error, sigma_hp_2nd_l2k1_error,
 	sigma_hp_2nd_l2k2_error;
 
+
+// Proton target
 	if (param.flag[param.target] == 0) {
 
+
+// Leading order only
 	if (param.flag[param.LO] == 1) {
-
-		std::cout << "Numerical integration for the LO unpolarized cross-section ... ";
-
+		std::cout << "Integration for the LO unpolarized cross section ... ";
 		if (param.flag[param.int_method] == 0) {
-
 		llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_born,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 				llSuave(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_born,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_LO, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 		}
-
 		std::cout <<"completed\n";
-
 		output.sigma_unpol_born = integral[CP.comp]*nb;
 		errors.sigma_unpol_born = error[CP.comp]*nb;
-	}
 
+        if (param.flag[param.asymmetry] == 1) {
+            std::cout << "Integration for the LO polarized cross section ... ";
+            llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_interf_born,
+                    USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+                    CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+                    CP.GRIDNO, CP.STATEFILE, CP.SPIN,
+                    &CP.neval, &CP.fail, integral, error, prob);
+            output.sigma_pol_born = param.P*integral[CP.comp]*nb;
+            errors.sigma_pol_born = param.P*error[CP.comp]*nb;
+            output.asymm_born = output.sigma_pol_born / output.sigma_unpol_born;
+            errors.asymm_born = abs(output.sigma_pol_born/output.sigma_unpol_born) *
+                    sqrt(pow(errors.sigma_unpol_born/output.sigma_unpol_born,2.)
+                            + pow(errors.sigma_pol_born/output.sigma_pol_born,2.));
+            output.sigma_born = output.sigma_pol_born + output.sigma_unpol_born;
+            errors.sigma_born = sqrt(pow(errors.sigma_pol_born,2.) +
+                                     pow(errors.sigma_unpol_born,2.));
+            std::cout <<"completed\n";
+        }
+    }
+// End section for leading order only
+
+
+// Non-radiative (elastic) cross section:
+// leading order + loop + soft photon
+// for both first order or first+second order
+// and including vacpol and hadronic corrections if requested
 	if (param.flag[param.order] >= 0) {
-
-		std::cout << "Numerical integration for the soft-photon unpolarized cross-section ... ";
-
+		std::cout << "Integration for soft-photon + loop unpolarized cross section ... ";
 		llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_elastic,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
-
 		if (param.flag[param.order] == 0 || param.flag[param.order] == 1) {
-			errors.sigma_unpol_elastic_1st = error[CP.comp]*nb;
 			output.sigma_unpol_elastic_1st = integral[CP.comp]*nb;
+            errors.sigma_unpol_elastic_1st = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.order] == 2) {
-			errors.sigma_unpol_elastic_2nd = error[CP.comp]*nb;
 			output.sigma_unpol_elastic_2nd = integral[CP.comp]*nb;
+            errors.sigma_unpol_elastic_2nd = error[CP.comp]*nb;
+// ... but we want to keep track of the 1st order corrections:
+// reset order and repeat the calculation
+            param.flag[param.order] = 1;
+            llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_elastic,
+                    USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+                    CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+                    CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
+                    &CP.neval, &CP.fail, integral, error, prob);
+            output.sigma_unpol_elastic_1st = integral[CP.comp]*nb;
+            errors.sigma_unpol_elastic_1st = error[CP.comp]*nb;
+            param.flag[param.order] = 2;
+// done recalculation of 1st order elastic cross section
 		}
-
 		if (param.flag[param.brems] == 0 && param.flag[param.brems_hadr] == 0) {
 			output.sigma_unpol_1st = output.sigma_unpol_elastic_1st;
 			errors.sigma_unpol_1st = errors.sigma_unpol_elastic_1st;
@@ -178,124 +192,102 @@ int PES::initialization(){
 			errors.sigma_unpol_2nd = errors.sigma_unpol_elastic_2nd;
 		}
 		std::cout <<"completed\n";
-	}
 
-	if (param.flag[param.asymmetry] == 1) {
-		if (param.flag[param.LO] == 1) {
-
-			std::cout << "Numerical integration for the LO polarized cross-section ... ";
-
-			llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_interf_born,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-
-			output.sigma_pol_born = param.P*integral[CP.comp]*nb;
-			errors.sigma_pol_born = param.P*error[CP.comp]*nb;
-			output.asymm_born = output.sigma_pol_born / output.sigma_unpol_born;
-			errors.asymm_born = (output.sigma_pol_born/output.sigma_unpol_born) *
-					sqrt(pow(errors.sigma_unpol_born/output.sigma_unpol_born,2.)
-							+ pow(errors.sigma_pol_born/output.sigma_pol_born,2.));
-			output.sigma_born = output.sigma_pol_born + output.sigma_unpol_born;
-			errors.sigma_born = sqrt(pow(errors.sigma_pol_born,2.) + pow(errors.sigma_unpol_born,2.));
-
-			std::cout <<"completed\n";
-		}
-
-		if (param.flag[param.order] >= 0) {
-
-			std::cout << "Numerical integration for the soft-photon polarized cross-section ... ";
-
+        if (param.flag[param.asymmetry] == 1) {
+			std::cout << "Integration for soft-photon + loop polarized cross section ... ";
 			llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_interf_elastic,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			if (param.flag[param.order] == 0 || param.flag[param.order] == 1) {
-				errors.sigma_pol_elastic_1st = param.P*error[CP.comp]*nb;
 				output.sigma_pol_elastic_1st = param.P*integral[CP.comp]*nb;
-			}
-
+                errors.sigma_pol_elastic_1st = param.P*error[CP.comp]*nb;
+            }
 			if (param.flag[param.order] == 2) {
-				errors.sigma_pol_elastic_2nd = param.P*error[CP.comp]*nb;
 				output.sigma_pol_elastic_2nd = param.P*integral[CP.comp]*nb;
+                errors.sigma_pol_elastic_2nd = param.P*error[CP.comp]*nb;
+// keep track of the 1st order corrections:
+// reset order and repeat the calculation
+                param.flag[param.order] = 1;
+                llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_interf_elastic,
+                        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+                        CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+                        CP.GRIDNO, CP.STATEFILE, CP.SPIN,
+                        &CP.neval, &CP.fail, integral, error, prob);
+                output.sigma_pol_elastic_1st = param.P*integral[CP.comp]*nb;
+                errors.sigma_pol_elastic_1st = param.P*error[CP.comp]*nb;
+                param.flag[param.order] = 2;
+// done recalculation of 1st order elastic cross section
 			}
-
 			if (param.flag[param.brems] == 0) {
 				output.sigma_pol_1st = output.sigma_pol_elastic_1st;
 				errors.sigma_pol_1st = errors.sigma_pol_elastic_1st;
 				output.sigma_pol_2nd = output.sigma_pol_elastic_2nd;
 				errors.sigma_pol_2nd = errors.sigma_pol_elastic_2nd;
 				output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
-				errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) + pow(errors.sigma_unpol_1st,2.));
+				errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) +
+                                        pow(errors.sigma_unpol_1st,2.));
 				output.sigma_2nd = output.sigma_pol_2nd + output.sigma_unpol_2nd;
-				errors.sigma_2nd = sqrt(pow(errors.sigma_pol_2nd,2.) + pow(errors.sigma_unpol_2nd,2.));
+				errors.sigma_2nd = sqrt(pow(errors.sigma_pol_2nd,2.) +
+                                        pow(errors.sigma_unpol_2nd,2.));
+                output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
+                errors.asymm_1st = abs(output.sigma_pol_1st/output.sigma_unpol_1st) *
+                        sqrt(pow(errors.sigma_unpol_1st/output.sigma_unpol_1st,2.)
+                                + pow(errors.sigma_pol_1st/output.sigma_pol_1st,2.));
+                output.rel_asymm_1st = - 100.*(output.asymm_1st - output.asymm_born) /
+                                              output.asymm_born;
+                output.asymm_2nd = output.sigma_pol_2nd / output.sigma_unpol_2nd;
+                errors.asymm_2nd = abs(output.sigma_pol_2nd/output.sigma_unpol_2nd) *
+                        sqrt(pow(errors.sigma_unpol_2nd/output.sigma_unpol_2nd,2.)
+                                + pow(errors.sigma_pol_2nd/output.sigma_pol_2nd,2.));
+                output.rel_asymm_2nd = - 100.*(output.asymm_2nd - output.asymm_born) /
+                                              output.asymm_born;
 			}
-		}
-
-		std::cout <<"completed\n";
-
+            std::cout <<"completed\n";
+        }
 	}
+// End section for leptonic non-radiative cross section
 
+
+// Radiative contributions: One hard photon radiation
+// At first order: just one-photon bremsstrahlung
+// at second order: including loop and soft-photon correction to one-photon bremsstrahlung
 	if (param.flag[param.brems] == 1 || param.flag[param.brems] == 2) {
-
-		std::cout << "Numerical integration for one hard-photon unpolarized cross-section ... ";
-
+		std::cout << "Integration for one hard-photon unpolarized cross section ... ";
 		if (param.flag[param.int_method] == 0) {
-
 			if (param.flag[param.PS] == 0) {
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
-
 			if (param.flag[param.PS] == 1) {
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
-//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
-//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
-//						&CP.neval, &CP.fail, integral, error, prob);
-//
-//				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_test,
-//						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
-//						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
-//						&CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			if (param.flag[param.PS] == 0) {
 				llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			}
 
 			if (param.flag[param.PS] == 1) {
@@ -306,9 +298,7 @@ int PES::initialization(){
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.int_method] == 2) {
-
 			if (param.flag[param.PS] == 0) {
 				llCuhre(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
@@ -316,7 +306,6 @@ int PES::initialization(){
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
-
 			if (param.flag[param.PS] == 1) {
 				llCuhre(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
@@ -325,49 +314,44 @@ int PES::initialization(){
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.order] == 0) {
 			output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 			errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
 		}
-
-		if (param.flag[param.order] == 1) {
+		if (param.flag[param.order] == 1 || param.flag[param.order] == 2) {
 			output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 			errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
-			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st + output.sigma_unpol_elastic_1st;
-			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-					+ pow(errors.sigma_unpol_elastic_1st,2.));
+			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st +
+                                     output.sigma_unpol_elastic_1st;
+			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                          pow(errors.sigma_unpol_elastic_1st,2.));
 		}
-
 		if (param.flag[param.order] == 2) {
 			output.sigma_unpol_inelastic_loop = integral[CP.comp]*nb;
 			errors.sigma_unpol_inelastic_loop = error[CP.comp]*nb;
 		}
 		std::cout <<"completed\n";
 	}
+// End section for one-photon bremsstrahlung
 
-	if (param.flag[param.hadr_corr] == 1 || param.flag[param.hadr_corr] == 3) {
 
-		std::cout << "Numerical integration for the hadronic interference part of one hard-photon unpolarized cross-section ... ";
-
+// Hadronic bremsstrahlung corrections (1st order only)
+	if (param.flag[param.brems_hadr] == 1 || param.flag[param.brems_hadr] == 3) {
+		std::cout <<
+        "Integration for hadronic interference hard-photon unpolarized cross section ... ";
 		if (param.flag[param.int_method] == 0) {
-
 			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr_interf,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_hadr_interf, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr_interf,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_hadr_interf, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr_interf,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
@@ -377,80 +361,156 @@ int PES::initialization(){
 		}
 		output.sigma_unpol_inelastic_1st_hadr_interf = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_1st_hadr_interf = error[CP.comp]*nb;
-
 		if (param.flag[param.order] == 0 || param.flag[param.order] == 1) {
 			output.sigma_unpol_inelastic_1st += output.sigma_unpol_inelastic_1st_hadr_interf;
-			errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-												+ pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
-			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st + output.sigma_unpol_elastic_1st;
-			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-					+ pow(errors.sigma_unpol_elastic_1st,2.));
+			errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                            pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
+			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st +
+                                     output.sigma_unpol_elastic_1st;
+			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                          pow(errors.sigma_unpol_elastic_1st,2.));
 		}
-
 		if (param.flag[param.order] == 2) {
-			output.sigma_unpol_inelastic_loop +=  output.sigma_unpol_inelastic_1st_hadr_interf;
-			errors.sigma_unpol_inelastic_loop = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-												+ pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
+			output.sigma_unpol_inelastic_loop += output.sigma_unpol_inelastic_1st_hadr_interf;
+			errors.sigma_unpol_inelastic_loop = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                        pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
 		}
 		std::cout <<"completed\n";
 	}
 
-	if (param.flag[param.hadr_corr] == 2 || param.flag[param.hadr_corr] == 3) {
-
-		std::cout << "Numerical integration for the purely hadronic part of one hard-photon unpolarized cross-section ... ";
-
+	if (param.flag[param.brems_hadr] == 2 || param.flag[param.brems_hadr] == 3) {
+		std::cout << "Integration for purely hadronic one hard-photon unpolarized cross section ... ";
 		if (param.flag[param.int_method] == 0) {
-
 			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_hadr, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_hadr, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_hadr,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 		}
 		output.sigma_unpol_inelastic_1st_hadr = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_1st_hadr = error[CP.comp]*nb;
-
 		if (param.flag[param.order] == 0 || param.flag[param.order] == 1) {
 			output.sigma_unpol_inelastic_1st += output.sigma_unpol_inelastic_1st_hadr;
-			errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-					+ pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
-			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st + output.sigma_unpol_elastic_1st;
-			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-					+ pow(errors.sigma_unpol_elastic_1st,2.));
+			errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                                pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
+			output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st +
+                                     output.sigma_unpol_elastic_1st;
+			errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                          pow(errors.sigma_unpol_elastic_1st,2.));
 		}
-
 		if (param.flag[param.order] == 2) {
 			output.sigma_unpol_inelastic_loop += output.sigma_unpol_inelastic_1st_hadr;
-			errors.sigma_unpol_inelastic_loop = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.)
-					+ pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
+			errors.sigma_unpol_inelastic_loop = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                                pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
 		}
 		std::cout <<"completed\n";
 	}
+// End section for hadronic corrections
 
+
+// One hard photon radiation for polarized cross section
+// for second order including loop+soft-photon correction
+            if (param.flag[param.asymmetry] == 1 &&
+                (param.flag[param.brems] == 1 ||
+                 param.flag[param.brems] == 2)) {
+                std::cout << "Integration for one hard photon polarized cross section ... ";
+                if (param.flag[param.int_method] == 0) {
+                    llVegas(CP.NDIM_brems_1st, CP.NCOMP,
+                            integrands.cuba_integrand_interf_brems_1st,
+                            USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+                            CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+                            CP.GRIDNO_brems_interf, CP.STATEFILE, CP.SPIN,
+                            &CP.neval, &CP.fail, integral, error, prob);
+                    llVegas(CP.NDIM_brems_1st, CP.NCOMP,
+                            integrands.cuba_integrand_interf_brems_1st,
+                            USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
+                            CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+                            CP.GRIDNO_brems_interf, CP.STATEFILE, CP.SPIN,
+                            &CP.neval, &CP.fail, integral, error, prob);
+                }
+                if (param.flag[param.int_method] == 1) {
+                    llSuave(CP.NDIM_brems_1st, CP.NCOMP,
+                            integrands.cuba_integrand_interf_brems_1st,
+                            USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
+                            CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
+                            CP.STATEFILE, CP.SPIN,
+                            &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
+                }
+                if (param.flag[param.int_method] == 2) {
+                    llCuhre(CP.NDIM_brems_1st, CP.NCOMP,
+                            integrands.cuba_integrand_interf_brems_1st,
+                            USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
+                            CP.MINEVAL, CP.MAXEVAL_1st, 9,
+                            CP.STATEFILE, CP.SPIN,
+                            &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
+                }
+                if (param.flag[param.order] == 1 || param.flag[param.order] == 2) {
+                    output.sigma_pol_inelastic_1st = param.P*integral[CP.comp]*nb;
+                    errors.sigma_pol_inelastic_1st = param.P*error[CP.comp]*nb;
+                    output.sigma_pol_1st = output.sigma_pol_inelastic_1st +
+                                           output.sigma_pol_elastic_1st;
+                    errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st +
+                                           errors.sigma_pol_elastic_1st;
+                    output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
+                    errors.asymm_1st = abs(output.asymm_1st) *
+                                       sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.) +
+                                            pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
+                    output.rel_asymm_1st = - 100.*(output.asymm_1st - output.asymm_born) /
+                                                  output.asymm_born;
+                    output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
+                    errors.sigma_1st = sqrt(pow(output.sigma_pol_1st,2.) +
+                                            pow(output.sigma_unpol_1st,2.));
+                }
+                if (param.flag[param.order] == 2) {
+                    output.sigma_pol_inelastic_loop = param.P*integral[CP.comp]*nb;
+                    errors.sigma_pol_inelastic_loop = param.P*error[CP.comp]*nb;
+                }
+                std::cout << "completed\n";
+                if (param.flag[param.order] == 2 && param.flag[param.brems_add] == 1) {
+                    std::cout << "Integration for one hard + one soft photon finite contribution ... ";
+                    llSuave(CP.NDIM_brems_2nd, CP.NCOMP,
+                            integrands.cuba_integrand_brems_2nd_pol_add,
+                            USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
+                            CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
+                            CP.STATEFILE, CP.SPIN,
+                            &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
+                    output.sigma_pol_2nd_add = param.P*integral[CP.comp]*nb;
+                    errors.sigma_pol_2nd_add = param.P*error[CP.comp]*nb;
+                    output.sigma_pol_inelastic_loop += output.sigma_pol_2nd_add;
+                    errors.sigma_pol_inelastic_loop = sqrt(pow(errors.sigma_pol_2nd_add,2.) +
+                                                           pow(errors.sigma_pol_inelastic_loop,2.));
+                    std::cout <<"completed\n";
+                }
+            }
+// End section for one-photon bremsstrahlung for polarized cross section
+
+
+// Second order corrections
+        if (param.flag[param.brems] >= 2 || param.flag[param.brems_add] >= 1) {
+            std::cout <<"Start integration for 2nd order bremsstrahlung\n";
+            std::cout <<"***** This may take a while . . . \n";
+        }
+
+// Second order correction: finite soft*hard terms
 		if (param.flag[param.order] == 2 && param.flag[param.brems_add] == 1) {
-
-			std::cout << "Numerical integration for one hard-photon and one soft-photon finite contribution ... ";
-
+			std::cout << "Integration for one hard + one soft photon finite contribution ... ";
 			double sigma_add_l1k1, sigma_add_l1k2, sigma_add_l2k1, sigma_add_l2k2;
-			double error_sigma_add_l1k1, error_sigma_add_l1k2, error_sigma_add_l2k1, error_sigma_add_l2k2;
-//
+			double error_sigma_add_l1k1, error_sigma_add_l1k2, error_sigma_add_l2k1,
+                   error_sigma_add_l2k2;
+// Vegas integration disabled. Always use Suave, independent of input for
+// integration method.
 //			if (param.flag[param.int_method] == 0) {
 //				llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1,
 //						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
@@ -512,1264 +572,590 @@ int PES::initialization(){
 //				sigma_add_l2k2 = integral[CP.comp]*nb;
 //				error_sigma_add_l2k2 = error[CP.comp]*nb;
 //			}
-
 //			if (param.flag[param.int_method] == 1) {
 				llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 				sigma_add_l1k1 = integral[CP.comp]*nb;
 				error_sigma_add_l1k1 = error[CP.comp]*nb;
-
 				llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 				sigma_add_l2k1 = integral[CP.comp]*nb;
 				error_sigma_add_l2k1 = error[CP.comp]*nb;
-
 				llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 				sigma_add_l1k2 = integral[CP.comp]*nb;
 				error_sigma_add_l1k2 = error[CP.comp]*nb;
-
 				llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 				sigma_add_l2k2 = integral[CP.comp]*nb;
 				error_sigma_add_l2k2 = error[CP.comp]*nb;
 //			}
-
 			double sigma_add = sigma_add_l1k1 + sigma_add_l2k1 + sigma_add_l1k2 + sigma_add_l2k2;
-			double error_sigma_add = sqrt(pow(error_sigma_add_l1k1,2.) + pow(error_sigma_add_l2k1,2.)
-					+ pow(error_sigma_add_l1k2,2.) + pow(error_sigma_add_l2k2,2.));
-
+			double error_sigma_add = sqrt(pow(error_sigma_add_l1k1,2.) +
+                                          pow(error_sigma_add_l2k1,2.) +
+                                          pow(error_sigma_add_l1k2,2.) +
+                                          pow(error_sigma_add_l2k2,2.));
 			output.sigma_unpol_2nd_add = sigma_add;
 			errors.sigma_unpol_2nd_add = error_sigma_add;
 			output.sigma_unpol_inelastic_loop += output.sigma_unpol_2nd_add;
 			errors.sigma_unpol_inelastic_loop = sqrt(pow(errors.sigma_unpol_2nd_add,2.)
 													+ pow(errors.sigma_unpol_inelastic_loop,2.));
-
 			std::cout <<"completed\n";
-
 		}
+// End section for 'additional' finite terms
 
-		if (param.flag[param.order] == 2 && param.flag[param.brems] == 1) {
-			output.sigma_unpol_2nd = output.sigma_unpol_elastic_2nd
-					+ output.sigma_unpol_inelastic_loop;
-			errors.sigma_unpol_2nd = sqrt(pow(errors.sigma_unpol_elastic_2nd,2.)
-					+ pow(errors.sigma_unpol_inelastic_loop,2.));
+
+//
+    if (param.flag[param.order] == 2 && param.flag[param.brems] == 1) {
+        std::cout << "***** WARNING: ***** \n"
+                  << "***** 2nd order loop is combined with 1st order bremsstrahlung \n"
+                  << "***** Result is incomplete! \n\n";
+        output.sigma_unpol_2nd = output.sigma_unpol_elastic_2nd +
+                                 output.sigma_unpol_inelastic_loop;
+        errors.sigma_unpol_2nd = sqrt(pow(errors.sigma_unpol_elastic_2nd,2.) +
+                                      pow(errors.sigma_unpol_inelastic_loop,2.));
 		}
+//
 
+
+// 2nd order bremsstrahlung: two hard photons
 	if (param.flag[param.brems] == 2 || param.flag[param.brems] == 3) {
-
-		std::cout << "Numerical integration for two hard-photons unpolarized cross-section ... ";
-
+		std::cout << "Integration for two-hard-photon unpolarized cross section ... ";
 		if (param.flag[param.int_method] == 0) {
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 2) {
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
-//		std::cout << sigma_hp_2nd_l1k1 << " +- " << sigma_hp_2nd_l1k1_error <<"\n";
-//		std::cout << sigma_hp_2nd_l1k2 << " +- " << sigma_hp_2nd_l1k2_error <<"\n";
-//		std::cout << sigma_hp_2nd_l2k1 << " +- " << sigma_hp_2nd_l2k1_error <<"\n";
-//		std::cout << sigma_hp_2nd_l2k2 << " +- " << sigma_hp_2nd_l2k2_error <<"\n";
-
-		output.sigma_unpol_inelastic_2nd = sigma_hp_2nd_l1k1 + sigma_hp_2nd_l1k2 + sigma_hp_2nd_l2k1 + sigma_hp_2nd_l2k2;
-		errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_hp_2nd_l1k1_error,2.) + pow(sigma_hp_2nd_l1k2_error,2.)
-											+ pow(sigma_hp_2nd_l2k1_error,2.) + pow(sigma_hp_2nd_l2k2_error,2.));
-
+		output.sigma_unpol_inelastic_2nd = sigma_hp_2nd_l1k1 +
+                                           sigma_hp_2nd_l1k2 +
+                                           sigma_hp_2nd_l2k1 +
+                                           sigma_hp_2nd_l2k2;
+		errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_hp_2nd_l1k1_error,2.) +
+                                                pow(sigma_hp_2nd_l1k2_error,2.) +
+                                                pow(sigma_hp_2nd_l2k1_error,2.) +
+                                                pow(sigma_hp_2nd_l2k2_error,2.));
 		if (param.flag[param.order] == 2) {
-			output.sigma_unpol_2nd = output.sigma_unpol_elastic_2nd
-					+ output.sigma_unpol_inelastic_loop + output.sigma_unpol_inelastic_2nd;
-			errors.sigma_unpol_2nd = sqrt(pow(errors.sigma_unpol_elastic_2nd,2.)
-					+ pow(errors.sigma_unpol_inelastic_loop,2.) + pow(errors.sigma_unpol_inelastic_2nd,2.));
+			output.sigma_unpol_2nd = output.sigma_unpol_elastic_2nd +
+                                     output.sigma_unpol_inelastic_loop +
+                                     output.sigma_unpol_inelastic_2nd;
+			errors.sigma_unpol_2nd = sqrt(pow(errors.sigma_unpol_elastic_2nd,2.) +
+                                          pow(errors.sigma_unpol_inelastic_loop,2.) +
+                                          pow(errors.sigma_unpol_inelastic_2nd,2.));
 		}
 		std::cout <<"completed\n";
 	}
+// End section for 2-hard-photon bremsstrahlung
 
+
+// Hard radiation for differential cross sections
+// brems=4: 1st order 2-fold differential in theta_l and theta_gamma
 	if (param.flag[param.brems] == 4) {
-
 		if (param.flag[param.int_method] == 0) {
-
 			if (param.flag[param.PS] == 0) {
-				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_2diff_v1,
+				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_2diff_v1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
-				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_2diff_v1,
+				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_2diff_v1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
-
 			if (param.flag[param.PS] == 1) {
-				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2_2diff,
+				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_ps2_2diff,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
-				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2_2diff,
+				llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_ps2_2diff,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 						CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			if (param.flag[param.PS] == 0) {
-				llSuave(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_2diff_v1,
+				llSuave(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_2diff_v1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
-
 			if (param.flag[param.PS] == 1) {
-				llSuave(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2_2diff,
+				llSuave(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_ps2_2diff,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.int_method] == 2) {
-
 			if (param.flag[param.PS] == 0) {
-				llCuhre(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_2diff_v1,
+				llCuhre(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_2diff_v1,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.KEY,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
 			if (param.flag[param.PS] == 1) {
-				llCuhre(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2_2diff,
+				llCuhre(CP.NDIM_brems_1st_2diff, CP.NCOMP,
+                        integrands.cuba_integrand_brems_1st_ps2_2diff,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.KEY,
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
 		if (param.flag[param.order] == 1) {
 			output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 			errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
 		}
-//
 		if (param.flag[param.order] == 2) {
 			output.sigma_unpol_inelastic_loop = integral[CP.comp]*nb;
 			errors.sigma_unpol_inelastic_loop = error[CP.comp]*nb;
 		}
 	}
+// End section bremsstrahlung type = 4
 
+// brems=5: 2nd order 2-fold differential in theta_l and theta_gamma
 	if (param.flag[param.brems] == 5) {
-
 		if (param.flag[param.int_method] == 0) {
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2diff,
+			llVegas(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
-			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2diff,
+			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2diff,
+			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2diff,
+			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2diff,
+			llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 2) {
-
-			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2diff,
+			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k1_error = error[CP.comp]*nb;
-
-			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2diff,
+			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l1k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l1k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l1k2_error = error[CP.comp]*nb;
-
-			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2diff,
+			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k1_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k1 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k1_error = error[CP.comp]*nb;
-
-			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2diff,
+			llCuhre(CP.NDIM_brems_2nd_2diff, CP.NCOMP,
+                    integrands.cuba_integrand_brems_2nd_l2k2_2diff,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_hp_2nd_l2k2 = integral[CP.comp]*nb;
 			sigma_hp_2nd_l2k2_error = error[CP.comp]*nb;
 		}
-
-		output.sigma_unpol_inelastic_2nd = sigma_hp_2nd_l1k1 + sigma_hp_2nd_l1k2 + sigma_hp_2nd_l2k1 + sigma_hp_2nd_l2k2;
-		errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_hp_2nd_l1k1_error,2.) + pow(sigma_hp_2nd_l1k2_error,2.)
-											+ pow(sigma_hp_2nd_l2k1_error,2.) + pow(sigma_hp_2nd_l2k2_error,2.));
+		output.sigma_unpol_inelastic_2nd = sigma_hp_2nd_l1k1 +
+                                           sigma_hp_2nd_l1k2 +
+                                           sigma_hp_2nd_l2k1 +
+                                           sigma_hp_2nd_l2k2;
+		errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_hp_2nd_l1k1_error,2.) +
+                                                pow(sigma_hp_2nd_l1k2_error,2.) +
+                                                pow(sigma_hp_2nd_l2k1_error,2.) +
+                                                pow(sigma_hp_2nd_l2k2_error,2.));
 
 	}
+// End section bremsstrahlung type = 5
 
+// brems=6: 2nd order 1-fold differential in theta'_gamma
 	if (param.flag[param.brems] == 6) {
-
 		llVegas(CP.NDIM_brems_2nd_1diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_1diff,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO_brems_2nd, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
-
 		llVegas(CP.NDIM_brems_2nd_1diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_1diff,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO_brems_2nd, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
-
 		output.sigma_unpol_inelastic_2nd = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_2nd = error[CP.comp]*nb;
 	}
+// End section bremsstrahlung type = 6
 
+// brems=7: 1st order 2-fold differential in theta_l and E'
 	if (param.flag[param.brems] == 7) {
-
 		llVegas(CP.NDIM_brems_1st_2diff, CP.NCOMP, integrands.cuba_integrand_brems_1st_2diff_v2,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
-
 		output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
 	}
+// End section bremsstrahlung type = 7
 
+// brems=8: 1st order 3-fold differential in theta_l, theta_gamma and phi_gamma
 	if (param.flag[param.brems] == 8) {
-
 		llSuave(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2_3diff,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 				CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
 				CP.STATEFILE, CP.SPIN,
 				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 		output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
 	}
+// End section bremsstrahlung type = 8
 
-	if (param.flag[param.brems] == 9) {
 
-		llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_sg_diff,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
-		errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
-	}
-
-	if (param.flag[param.brems] == 10) {
-
-		double sigma_add_l1k1, sigma_add_l1k2, sigma_add_l2k1, sigma_add_l2k2;
-		double error_sigma_add_l1k1, error_sigma_add_l1k2, error_sigma_add_l2k1, error_sigma_add_l2k2;
-
-//		llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_2diff,
-//				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-//				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-//				CP.STATEFILE, CP.SPIN,
-//				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-//
-//		output.sigma_unpol_2nd_add = integral[CP.comp]*nb;
-//		std::cout << output.sigma_unpol_2nd_add << "\n";
-
-		llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_2diff,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		sigma_add_l1k1 = integral[CP.comp]*nb;
-		error_sigma_add_l1k1 = error[CP.comp]*nb;
-//		std::cout << sigma_add_l1k1 << "\n";
-
-		llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_2diff,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		sigma_add_l1k2 = integral[CP.comp]*nb;
-		error_sigma_add_l1k2 = error[CP.comp]*nb;
-//		std::cout << sigma_add_l1k2 << "\n";
-
-		llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_2diff,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		sigma_add_l2k1 = integral[CP.comp]*nb;
-		error_sigma_add_l2k1 = error[CP.comp]*nb;
-//		std::cout << sigma_add_l2k1 << "\n";
-
-		llSuave(CP.NDIM_brems_2nd_2diff, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_2diff,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		sigma_add_l2k2 = integral[CP.comp]*nb;
-		error_sigma_add_l2k2 = error[CP.comp]*nb;
-//		std::cout << sigma_add_l2k2 << "\n";
-
-		output.sigma_unpol_2nd_add = sigma_add_l1k1 + sigma_add_l2k1 + sigma_add_l1k2 + sigma_add_l2k2;
-		errors.sigma_unpol_2nd_add = sqrt(pow(error_sigma_add_l1k1,2.) + pow(error_sigma_add_l2k1,2.)
-				+ pow(error_sigma_add_l1k2,2.) + pow(error_sigma_add_l2k2,2.));
-
-	}
-
-	if (param.flag[param.brems] == 11) {
-
-		double sigma_add_l1k1_1, sigma_add_l1k1_2, sigma_add_l1k2_1, sigma_add_l1k2_2,
-		sigma_add_l2k1_1, sigma_add_l2k1_2, sigma_add_l2k2_1, sigma_add_l2k2_2;
-		double error_sigma_add_l1k1_1, error_sigma_add_l1k1_2, error_sigma_add_l1k2_1,
-		error_sigma_add_l1k2_2, error_sigma_add_l2k1_1, error_sigma_add_l2k1_2,
-		error_sigma_add_l2k2_1, error_sigma_add_l2k2_2;
-
-		std::cout << "Numerical integration for one hard-photon and one soft-photon finite contribution ... ";
-
-		if (param.flag[param.int_method] == 0) {
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k1_1 = integral[CP.comp]*nb;
-			error_sigma_add_l1k1_1 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l1k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l1k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k1_2 = integral[CP.comp]*nb;
-			error_sigma_add_l1k1_2 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k2_1 = integral[CP.comp]*nb;
-			error_sigma_add_l1k2_1 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l1k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l1k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k2_2 = integral[CP.comp]*nb;
-			error_sigma_add_l1k2_2 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k1_1 = integral[CP.comp]*nb;
-			error_sigma_add_l2k1_1 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l2k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l2k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k1_2 = integral[CP.comp]*nb;
-			error_sigma_add_l2k1_2 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k2_1 = integral[CP.comp]*nb;
-			error_sigma_add_l2k2_1 = error[CP.comp]*nb;
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l2k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_2nd_add_l2k2, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k2_2 = integral[CP.comp]*nb;
-			error_sigma_add_l2k2_2 = error[CP.comp]*nb;
-
-		}
-
-		if (param.flag[param.int_method] == 1) {
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k1_1 = integral[CP.comp]*nb;
-			error_sigma_add_l1k1_1 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k1_2 = integral[CP.comp]*nb;
-			error_sigma_add_l1k1_2 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k1_1 = integral[CP.comp]*nb;
-			error_sigma_add_l2k1_1 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k1_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k1_2 = integral[CP.comp]*nb;
-			error_sigma_add_l2k1_2 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k2_1 = integral[CP.comp]*nb;
-			error_sigma_add_l1k2_1 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l1k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l1k2_2 = integral[CP.comp]*nb;
-			error_sigma_add_l1k2_2 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_1,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k2_1 = integral[CP.comp]*nb;
-			error_sigma_add_l2k2_1 = error[CP.comp]*nb;
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_add_l2k2_2,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			sigma_add_l2k2_2 = integral[CP.comp]*nb;
-			error_sigma_add_l2k2_2 = error[CP.comp]*nb;
-		}
-
-		double sigma_add_l1k1 = sigma_add_l1k1_1 + sigma_add_l1k1_2;
-		double error_sigma_add_l1k1 = sqrt(pow(error_sigma_add_l1k1_1,2.)+pow(error_sigma_add_l1k1_2,2.));
-		double sigma_add_l1k2 = sigma_add_l1k2_1 + sigma_add_l1k2_2;
-		double error_sigma_add_l1k2 = sqrt(pow(error_sigma_add_l1k2_1,2.)+pow(error_sigma_add_l1k2_2,2.));
-		double sigma_add_l2k1 = sigma_add_l2k1_1 + sigma_add_l2k1_2;
-		double error_sigma_add_l2k1 = sqrt(pow(error_sigma_add_l2k1_1,2.)+pow(error_sigma_add_l2k1_2,2.));
-		double sigma_add_l2k2 = sigma_add_l2k2_1 + sigma_add_l2k2_2;
-		double error_sigma_add_l2k2 = sqrt(pow(error_sigma_add_l2k2_1,2.)+pow(error_sigma_add_l2k2_2,2.));
-
-		output.sigma_unpol_2nd_add = sigma_add_l1k1 + sigma_add_l2k1 + sigma_add_l1k2 + sigma_add_l2k2;
-		errors.sigma_unpol_2nd_add = sqrt(pow(error_sigma_add_l1k1,2.) + pow(error_sigma_add_l2k1,2.)
-				+ pow(error_sigma_add_l1k2,2.) + pow(error_sigma_add_l2k2,2.));
-
-		std::cout <<"completed\n";
-	}
-
-	if (param.flag[param.brems] == 12) {
-
-		std::cout << "Numerical integration for two hard-photons unpolarized cross-section ... ";
-
-	    double sigma_2hp_l1k1_1, sigma_2hp_l1k1_2, sigma_2hp_l1k2_1, sigma_2hp_l1k2_2,
-	    sigma_2hp_l2k1_1, sigma_2hp_l2k1_2, sigma_2hp_l2k2_1, sigma_2hp_l2k2_2;
-	    double error_sigma_2hp_l1k1_1, error_sigma_2hp_l1k1_2, error_sigma_2hp_l1k2_1,
-	    error_sigma_2hp_l1k2_2, error_sigma_2hp_l2k1_1, error_sigma_2hp_l2k1_2,
-	    error_sigma_2hp_l2k2_1, error_sigma_2hp_l2k2_2;
-
-	    if (param.flag[param.int_method] == 0) {
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l1k1_1 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l1k1_1 = error[CP.comp]*nb;
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l1k2_1 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l1k2_1 = error[CP.comp]*nb;
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_1,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l2k1_1 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l2k1_1 = error[CP.comp]*nb;
-//
-	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_1,
-	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-	          CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
-	          &CP.neval, &CP.fail, integral, error, prob);
-
-	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_1,
-	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-	          CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
-	          &CP.neval, &CP.fail, integral, error, prob);
-
-	      sigma_2hp_l2k2_1 = integral[CP.comp]*nb;
-	      error_sigma_2hp_l2k2_1 = error[CP.comp]*nb;
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l1k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l1k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l1k1_2 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l1k1_2 = error[CP.comp]*nb;
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l1k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l1k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l1k2_2 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l1k2_2 = error[CP.comp]*nb;
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l2k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l2k1, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l2k1_2 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l2k1_2 = error[CP.comp]*nb;
-
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l2k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2,
-//	          USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-//	          CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-//	          CP.GRIDNO_brems_2nd_add_l2k2, CP.STATEFILE, CP.SPIN,
-//	          &CP.neval, &CP.fail, integral, error, prob);
-//
-//	      sigma_2hp_l2k2_2 = integral[CP.comp]*nb;
-//	      error_sigma_2hp_l2k2_2 = error[CP.comp]*nb;
-	    }
-
-	    if (param.flag[param.int_method] == 1) {
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_1,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l1k1_1 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l1k1_1 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_1,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l1k2_1 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l1k2_1 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_1,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l2k1_1 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l2k1_1 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_1,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l2k2_1 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l2k2_1 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k1_2,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l1k1_2 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l1k1_2 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l1k2_2,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l1k2_2 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l1k2_2 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k1_2,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l2k1_2 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l2k1_2 = error[CP.comp]*nb;
-
-	    llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_l2k2_2,
-	        USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-	        CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
-	        CP.STATEFILE, CP.SPIN,
-	        &CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-	    sigma_2hp_l2k2_2 = integral[CP.comp]*nb;
-	    error_sigma_2hp_l2k2_2 = error[CP.comp]*nb;
-	  }
-	    std::cout << sigma_2hp_l1k1_1 <<" +- "<< error_sigma_2hp_l1k1_1 <<"\n";
-	    std::cout << sigma_2hp_l1k2_1 <<" +- "<< error_sigma_2hp_l1k2_1 <<"\n";
-	    std::cout << sigma_2hp_l2k1_1 <<" +- "<< error_sigma_2hp_l2k1_1 <<"\n";
-	    std::cout << sigma_2hp_l2k2_1 <<" +- "<< error_sigma_2hp_l2k2_1 <<"\n";
-	    std::cout << sigma_2hp_l1k1_2 <<" +- "<< error_sigma_2hp_l1k1_2 <<"\n";
-	    std::cout << sigma_2hp_l1k2_2 <<" +- "<< error_sigma_2hp_l1k2_2 <<"\n";
-	    std::cout << sigma_2hp_l2k1_2 <<" +- "<< error_sigma_2hp_l2k1_2 <<"\n";
-	    std::cout << sigma_2hp_l2k2_2 <<" +- "<< error_sigma_2hp_l2k2_2 <<"\n";
-
-	    double sigma_2hp_l1k1 = sigma_2hp_l1k1_1 + sigma_2hp_l1k1_2;
-	    double sigma_2hp_l1k1_error = sqrt(pow(error_sigma_2hp_l1k1_1,2.)+pow(error_sigma_2hp_l1k1_2,2.));
-	    double sigma_2hp_l1k2 = sigma_2hp_l1k2_1 + sigma_2hp_l1k2_2;
-	    double sigma_2hp_l1k2_error = sqrt(pow(error_sigma_2hp_l1k2_1,2.)+pow(error_sigma_2hp_l1k2_2,2.));
-	    double sigma_2hp_l2k1 = sigma_2hp_l2k1_1 + sigma_2hp_l2k1_2;
-	    double sigma_2hp_l2k1_error = sqrt(pow(error_sigma_2hp_l2k1_1,2.)+pow(error_sigma_2hp_l2k1_2,2.));
-	    double sigma_2hp_l2k2 = sigma_2hp_l2k2_1 + sigma_2hp_l2k2_2;
-	    double sigma_2hp_l2k2_error = sqrt(pow(error_sigma_2hp_l2k2_1,2.)+pow(error_sigma_2hp_l2k2_2,2.));
-
-//	    double sigma_2hp_l1k1 = sigma_2hp_l1k1_2;
-//	    double sigma_2hp_l1k1_error = error_sigma_2hp_l1k1_2;
-//	    double sigma_2hp_l1k2 = sigma_2hp_l1k2_2;
-//	    double sigma_2hp_l1k2_error = error_sigma_2hp_l1k2_2;
-//	    double sigma_2hp_l2k1 = sigma_2hp_l2k1_2;
-//	    double sigma_2hp_l2k1_error = error_sigma_2hp_l2k1_2;
-//	    double sigma_2hp_l2k2 = sigma_2hp_l2k2_2;
-//	    double sigma_2hp_l2k2_error = error_sigma_2hp_l2k2_2;
-
-	    output.sigma_unpol_inelastic_2nd = sigma_2hp_l1k1 + sigma_2hp_l1k2 + sigma_2hp_l2k1 + sigma_2hp_l2k2;
-	    errors.sigma_unpol_inelastic_2nd = sqrt(pow(sigma_2hp_l1k1_error,2.) + pow(sigma_2hp_l1k2_error,2.)
-	                  + pow(sigma_2hp_l2k1_error,2.) + pow(sigma_2hp_l2k2_error,2.));
-	}
-
-	if (param.flag[param.asymmetry] == 1 && param.flag[param.brems] == 12) {
-
-		llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_pol_add,
-				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-				CP.STATEFILE, CP.SPIN,
-				&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-		output.sigma_pol_2nd_add = param.P*integral[CP.comp]*nb;
-		errors.sigma_pol_2nd_add = param.P*error[CP.comp]*nb;
-	}
-
-	if (param.flag[param.asymmetry] == 1 && (param.flag[param.brems] == 1 || param.flag[param.brems] == 2)) {
-
-		std::cout << "Numerical integration for one hard-photon polarized cross-section ... ";
-
-		if (param.flag[param.int_method] == 0) {
-			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_interf_brems_1st,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_interf, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-
-			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_interf_brems_1st,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-					CP.GRIDNO_brems_interf, CP.STATEFILE, CP.SPIN,
-					&CP.neval, &CP.fail, integral, error, prob);
-		}
-
-		if (param.flag[param.int_method] == 1) {
-			llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_interf_brems_1st,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_1st, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-		}
-
-		if (param.flag[param.int_method] == 2) {
-			llCuhre(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_interf_brems_1st,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
-					CP.MINEVAL, CP.MAXEVAL_1st, 9,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-		}
-
-		if (param.flag[param.order] == 1) {
-			output.sigma_pol_inelastic_1st = param.P*integral[CP.comp]*nb;
-			errors.sigma_pol_inelastic_1st = param.P*error[CP.comp]*nb;
-			output.sigma_pol_1st = output.sigma_pol_inelastic_1st + output.sigma_pol_elastic_1st;
-			errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st + errors.sigma_pol_elastic_1st;
-			output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
-			errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
-					+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
-			output.rel_asymm_1st = - 100.*(output.asymm_1st - output.asymm_born) / output.asymm_born;
-			output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
-			errors.sigma_1st = sqrt(pow(output.sigma_pol_1st,2.)
-												+ pow(output.sigma_unpol_1st,2.));
-		}
-		if (param.flag[param.order] == 2) {
-			output.sigma_pol_inelastic_loop = param.P*integral[CP.comp]*nb;
-			errors.sigma_pol_inelastic_loop = param.P*error[CP.comp]*nb;
-		}
-		std::cout << "completed\n";
-
-		if (param.flag[param.order] == 2 && param.flag[param.brems_add] == 1) {
-
-			std::cout << "Numerical integration for one hard-photon and one soft-photon finite contribution ... ";
-
-			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_brems_2nd_pol_add,
-					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
-					CP.MINEVAL, CP.MAXEVAL_2nd_add, CP.NNEW, CP.NMIN, CP.FLATNESS,
-					CP.STATEFILE, CP.SPIN,
-					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
-			output.sigma_pol_2nd_add = param.P*integral[CP.comp]*nb;
-			errors.sigma_pol_2nd_add = param.P*error[CP.comp]*nb;
-			output.sigma_pol_inelastic_loop += output.sigma_pol_2nd_add;
-			errors.sigma_pol_inelastic_loop = sqrt(pow(errors.sigma_pol_2nd_add,2.)
-													+ pow(errors.sigma_pol_inelastic_loop,2.));
-
-			std::cout <<"completed\n";
-
-		}
-	}
-
-	if (param.flag[param.asymmetry] == 1 && (param.flag[param.brems] == 2 || param.flag[param.brems] == 3)) {
-
-		std::cout << "Numerical integration for two hard-photons polarized cross-section ... ";
-
+// Two-photon bremsstrahlung for the polarized cross section
+	if (param.flag[param.asymmetry] == 1 &&
+        (param.flag[param.brems] == 2 ||
+         param.flag[param.brems] == 3)) {
+		std::cout << "Integration for two hard photon polarized cross section ... ";
 		double sigma_pol_2hg_1, error_sigma_pol_2hg_1, sigma_pol_2hg_2, error_sigma_pol_2hg_2;
-
 		if (param.flag[param.int_method] == 0) {
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_interf_2nd_1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_interf_2nd_1, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_1 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_1 = error[CP.comp]*nb;
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_interf_2nd_2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			llVegas(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_interf_2nd_2, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_2 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_2 = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 1) {
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_1 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_1 = error[CP.comp]*nb;
-
 			llSuave(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.NNEW, CP.NMIN, CP.FLATNESS,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_2 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_2 = error[CP.comp]*nb;
 		}
-
 		if (param.flag[param.int_method] == 2) {
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_1,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_1 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_1 = error[CP.comp]*nb;
-
 			llCuhre(CP.NDIM_brems_2nd, CP.NCOMP, integrands.cuba_integrand_interf_brems_2nd_2,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4,
 					CP.MINEVAL, CP.MAXEVAL_2nd, CP.KEY,
 					CP.STATEFILE, CP.SPIN,
 					&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
-
 			sigma_pol_2hg_2 = integral[CP.comp]*nb;
 			error_sigma_pol_2hg_2 = error[CP.comp]*nb;
 		}
-
 		output.sigma_pol_inelastic_2nd = param.P*(sigma_pol_2hg_1 + sigma_pol_2hg_2);
-		errors.sigma_pol_inelastic_2nd = param.P*sqrt(pow(error_sigma_pol_2hg_1,2.)
-													+ pow(error_sigma_pol_2hg_2,2.));
+		errors.sigma_pol_inelastic_2nd = param.P*sqrt(pow(error_sigma_pol_2hg_1,2.) +
+                                                      pow(error_sigma_pol_2hg_2,2.));
 		if (param.flag[param.order] == 2) {
-			output.sigma_pol_2nd = output.sigma_pol_elastic_2nd + output.sigma_pol_inelastic_loop + output.sigma_pol_inelastic_2nd;
+			output.sigma_pol_2nd = output.sigma_pol_elastic_2nd +
+                                   output.sigma_pol_inelastic_loop +
+                                   output.sigma_pol_inelastic_2nd;
 			errors.sigma_pol_2nd = sqrt(pow(errors.sigma_pol_elastic_2nd,2.) +
-					pow(errors.sigma_pol_inelastic_loop,2.) + pow(errors.sigma_pol_inelastic_2nd,2.));
+                                        pow(errors.sigma_pol_inelastic_loop,2.) +
+                                        pow(errors.sigma_pol_inelastic_2nd,2.));
 			output.asymm_2nd = output.sigma_pol_2nd / output.sigma_unpol_2nd;
-			errors.asymm_2nd = output.asymm_2nd * sqrt(pow(errors.sigma_pol_2nd / output.sigma_pol_2nd, 2.)
-					+ pow(errors.sigma_unpol_2nd / output.sigma_unpol_2nd, 2.));
-			output.rel_asymm_2nd = - 100.*(output.asymm_2nd - output.asymm_born) / output.asymm_born;
-			errors.sigma_2nd = sqrt(pow(output.sigma_pol_2nd,2.)
-												+ pow(output.sigma_unpol_2nd,2.));
+			errors.asymm_2nd = abs(output.asymm_2nd) *
+                               sqrt(pow(errors.sigma_pol_2nd / output.sigma_pol_2nd, 2.) +
+                                    pow(errors.sigma_unpol_2nd / output.sigma_unpol_2nd, 2.));
+			output.rel_asymm_2nd = - 100.*(output.asymm_2nd - output.asymm_born) /
+                                         output.asymm_born;
+			errors.sigma_2nd = sqrt(pow(output.sigma_pol_2nd,2.) +
+                                    pow(output.sigma_unpol_2nd,2.));
 			output.sigma_2nd = output.sigma_pol_2nd + output.sigma_unpol_2nd;
-			errors.sigma_2nd = sqrt(pow(output.sigma_pol_2nd,2.)
-												+ pow(output.sigma_unpol_2nd,2.));
+			errors.sigma_2nd = sqrt(pow(output.sigma_pol_2nd,2.) +
+                                    pow(output.sigma_unpol_2nd,2.));
 		}
 		std::cout << "completed\n";
 	}
+// End section for two-photon bremsstrahlung for polarized cross section
 
+
+// To keep track of 1st-order results if 2nd order was requested:
+// Recalculate one-photon bremsstrahlung without loop+soft-photon
 	if (param.flag[param.brems] == 2 && param.flag[param.order] == 2) {
-
-		param.flag[param.order] = 1;
-		CP.MAXEVAL_1st = param.maxeval_1st_aux;
-
+        param.flag[param.order] = 1;
+		param.MAXEVAL_1st = param.maxeval_1st_aux;
 		llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_elastic,
 				USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
-				CP.MINEVAL, CP.MAXEVAL_LO, CP.NSTART, CP.NINCREASE, CP.NBATCH,
+				CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 				CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 				&CP.neval, &CP.fail, integral, error, prob);
-
-		errors.sigma_unpol_elastic_1st = error[CP.comp]*nb;
-		output.sigma_unpol_elastic_1st = integral[CP.comp]*nb;
-
+        output.sigma_unpol_elastic_1st = integral[CP.comp]*nb;
+        errors.sigma_unpol_elastic_1st = error[CP.comp]*nb;
 		if (param.flag[param.int_method] == 0) {
 			if (param.flag[param.PS] == 0) {
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-						CP.GRIDNO_brems, CP.STATEFILE, CP.SPIN,
+						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-						CP.GRIDNO_brems, CP.STATEFILE, CP.SPIN,
+						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
 			if (param.flag[param.PS] == 1) {
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 						CP.MINEVAL, 1e7, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-						CP.GRIDNO_brems, CP.STATEFILE, CP.SPIN,
+						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
 				llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems, CP.SEED,
 						CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
-						CP.GRIDNO_brems, CP.STATEFILE, CP.SPIN,
+						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
 		}
-
-		if (param.flag[param.int_method] == 1) {
+        if (param.flag[param.int_method] == 1) {
 			if (param.flag[param.PS] == 0) {
 				llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
@@ -1777,7 +1163,6 @@ int PES::initialization(){
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
-
 			if (param.flag[param.PS] == 1) {
 				llSuave(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_brems_1st_ps2,
 						USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags_brems | 4, CP.SEED,
@@ -1785,45 +1170,57 @@ int PES::initialization(){
 						CP.STATEFILE, CP.SPIN,
 						&CP.nregions, &CP.neval, &CP.fail, integral, error, prob);
 			}
-    }
-
+        }
 		output.sigma_unpol_inelastic_1st = integral[CP.comp]*nb;
 		errors.sigma_unpol_inelastic_1st = error[CP.comp]*nb;
-		output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st + output.sigma_unpol_elastic_1st;
+        output.sigma_unpol_1st = output.sigma_unpol_inelastic_1st + output.sigma_unpol_elastic_1st;
 		errors.sigma_unpol_1st = errors.sigma_unpol_inelastic_1st + errors.sigma_unpol_elastic_1st;
+// add hadronic contribution if non-zero
+        output.sigma_unpol_inelastic_1st += output.sigma_unpol_inelastic_1st_hadr_interf;
+        errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                            pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
+        output.sigma_unpol_1st += output.sigma_unpol_inelastic_1st_hadr_interf;
+        errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_1st,2.) +
+                                      pow(errors.sigma_unpol_inelastic_1st_hadr_interf,2.));
+        output.sigma_unpol_inelastic_1st += output.sigma_unpol_inelastic_1st_hadr;
+        errors.sigma_unpol_inelastic_1st = sqrt(pow(errors.sigma_unpol_inelastic_1st,2.) +
+                                            pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
+        output.sigma_unpol_1st += output.sigma_unpol_inelastic_1st_hadr;
+        errors.sigma_unpol_1st = sqrt(pow(errors.sigma_unpol_1st,2.) +
+                                      pow(errors.sigma_unpol_inelastic_1st_hadr,2.));
 
-		if (param.flag[param.asymmetry] == 1) {
-
+        if (param.flag[param.asymmetry] == 1) {
 			llVegas(CP.NDIM_ELASTIC, CP.NCOMP, integrands.cuba_integrand_interf_elastic,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, 1e8, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
-			errors.sigma_pol_elastic_1st = param.P*error[CP.comp]*nb;
 			output.sigma_pol_elastic_1st = param.P*integral[CP.comp]*nb;
-
+            errors.sigma_pol_elastic_1st = param.P*error[CP.comp]*nb;
 			llVegas(CP.NDIM_brems_1st, CP.NCOMP, integrands.cuba_integrand_interf_brems_1st,
 					USERDATA, CP.NVEC, CP.EPSREL, CP.EPSABS, CP.flags, CP.SEED,
 					CP.MINEVAL, CP.MAXEVAL_1st, CP.NSTART, CP.NINCREASE, CP.NBATCH,
 					CP.GRIDNO_brems_interf, CP.STATEFILE, CP.SPIN,
 					&CP.neval, &CP.fail, integral, error, prob);
-
 			output.sigma_pol_inelastic_1st = param.P*integral[CP.comp]*nb;
 			errors.sigma_pol_inelastic_1st = param.P*error[CP.comp]*nb;
 			output.sigma_pol_1st = output.sigma_pol_inelastic_1st + output.sigma_pol_elastic_1st;
 			errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st + errors.sigma_pol_elastic_1st;
 			output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
-			errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
-					+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
+			errors.asymm_1st = abs(output.asymm_1st) *
+                               sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.) +
+                                    pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
 			output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
-			errors.sigma_1st = sqrt(pow(output.sigma_pol_1st,2.)
-												+ pow(output.sigma_unpol_1st,2.));
+			errors.sigma_1st = sqrt(pow(output.sigma_pol_1st,2.) +
+                                    pow(output.sigma_unpol_1st,2.));
 		}
 		param.flag[param.order] = 2;
 		param.MAXEVAL_1st = param.MAXEVAL_gamma_loop;
 	}
+// End section to repeat one-photon bremsstrahlung at 1st order
 
+
+// param.en <= 10 ?
 	if (param.en <= 10.) {
 		if (param.flag[param.brems] == 0) {
 			output.sigma_unpol_1st_vect.push_back(output.sigma_unpol_1st);
@@ -1835,7 +1232,8 @@ int PES::initialization(){
 			}
 		}
 		if (param.flag[param.brems] == 1) {
-			output.ev_brems_1st.push_back(output.sigma_unpol_inelastic_1st / output.sigma_unpol_1st);
+			output.ev_brems_1st.push_back(output.sigma_unpol_inelastic_1st /
+                                          output.sigma_unpol_1st);
 			output.sigma_unpol_1st_vect.push_back(output.sigma_unpol_1st);
 			output.sigma_unpol_1st_elastic_vect.push_back(output.sigma_unpol_elastic_1st);
 			output.sigma_unpol_1st_inelastic_vect.push_back(output.sigma_unpol_inelastic_1st);
@@ -1845,13 +1243,19 @@ int PES::initialization(){
 			}
 		}
 		if (param.flag[param.brems] == 2) {
-			output.ev_brems_1st.push_back(output.sigma_unpol_inelastic_1st / output.sigma_unpol_2nd);
+			output.ev_brems_1st.push_back(output.sigma_unpol_inelastic_1st /
+                                          output.sigma_unpol_2nd);
 			output.sigma_unpol_1st_vect.push_back(output.sigma_unpol_1st);
-			output.ev_brems_2nd.push_back(output.sigma_unpol_inelastic_2nd / output.sigma_unpol_2nd);
-			output.ev_brems_2nd_l1k1.push_back(sigma_hp_2nd_l1k1 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l1k2.push_back(sigma_hp_2nd_l1k2 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l2k1.push_back(sigma_hp_2nd_l2k1 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l2k2.push_back(sigma_hp_2nd_l2k2 / output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd.push_back(output.sigma_unpol_inelastic_2nd /
+                                          output.sigma_unpol_2nd);
+			output.ev_brems_2nd_l1k1.push_back(sigma_hp_2nd_l1k1 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l1k2.push_back(sigma_hp_2nd_l1k2 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l2k1.push_back(sigma_hp_2nd_l2k1 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l2k2.push_back(sigma_hp_2nd_l2k2 /
+                                               output.sigma_unpol_inelastic_2nd);
 			output.sigma_unpol_2nd_vect.push_back(output.sigma_unpol_2nd);
 			if (param.flag[param.asymmetry] == 1) {
 				output.sigma_pol_1st_vect.push_back(output.sigma_pol_1st);
@@ -1861,11 +1265,16 @@ int PES::initialization(){
 			}
 		}
 		if (param.flag[param.brems] == 3) {
-			output.ev_brems_2nd.push_back(output.sigma_unpol_inelastic_2nd / output.sigma_unpol_2nd);
-			output.ev_brems_2nd_l1k1.push_back(sigma_hp_2nd_l1k1 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l1k2.push_back(sigma_hp_2nd_l1k2 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l2k1.push_back(sigma_hp_2nd_l2k1 / output.sigma_unpol_inelastic_2nd);
-			output.ev_brems_2nd_l2k2.push_back(sigma_hp_2nd_l2k2 / output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd.push_back(output.sigma_unpol_inelastic_2nd /
+                                          output.sigma_unpol_2nd);
+			output.ev_brems_2nd_l1k1.push_back(sigma_hp_2nd_l1k1 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l1k2.push_back(sigma_hp_2nd_l1k2 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l2k1.push_back(sigma_hp_2nd_l2k1 /
+                                               output.sigma_unpol_inelastic_2nd);
+			output.ev_brems_2nd_l2k2.push_back(sigma_hp_2nd_l2k2 /
+                                               output.sigma_unpol_inelastic_2nd);
 			output.sigma_unpol_2nd_vect.push_back(output.sigma_unpol_2nd);
 			if (param.flag[param.asymmetry] == 1) {
 				output.sigma_pol_2nd_vect.push_back(output.sigma_pol_2nd);
@@ -1873,8 +1282,11 @@ int PES::initialization(){
 			}
 		}
 	}
+// End section (param.en <= 10.)
 	}
 
+
+// Carbon target
 	if (param.flag[param.target] == 1) {
 
 		if (param.flag[param.LO] == 1) {
@@ -1928,7 +1340,7 @@ int PES::initialization(){
 				output.sigma_pol_born = param.P*integral[CP.comp]*nb;
 				errors.sigma_pol_born = param.P*error[CP.comp]*nb;
 				output.asymm_born = output.sigma_pol_born / output.sigma_unpol_born;
-				errors.asymm_born = (output.sigma_pol_born/output.sigma_unpol_born) *
+				errors.asymm_born = abs(output.sigma_pol_born/output.sigma_unpol_born) *
 						sqrt(pow(errors.sigma_unpol_born/output.sigma_unpol_born,2.)
 								+ pow(errors.sigma_pol_born/output.sigma_pol_born,2.));
 				output.sigma_born = output.sigma_pol_born + output.sigma_unpol_born;
@@ -2031,7 +1443,7 @@ int PES::initialization(){
 				output.sigma_pol_1st = output.sigma_pol_inelastic_1st + output.sigma_pol_elastic_1st;
 				errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st + errors.sigma_pol_elastic_1st;
 				output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
-				errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
+				errors.asymm_1st = abs(output.asymm_1st) * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
 						+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
 				output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
 				errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) + pow(errors.sigma_unpol_1st,2.));
@@ -2062,6 +1474,8 @@ int PES::initialization(){
 		}
 	}
 
+
+// Electron target
 	if (param.flag[param.target] == 2) {
 
 			if (param.flag[param.LO] == 1) {
@@ -2127,6 +1541,7 @@ int PES::initialization(){
 
 }
 
+
 int PES::events(){
 
 	param.final_param(input);
@@ -2153,7 +1568,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
-
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2177,7 +1592,7 @@ int PES::events(){
 						CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
 			}
-
+			// FS.seed += 1e7;
 			FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 					                                          int(param.min[param.E]/param.Delta_E)];
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2193,6 +1608,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_elastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2212,6 +1628,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 				FS.avg_weight = FS.weight*nb / output.sigma_unpol_1st_inelastic_vect[int(param.en/param.Delta_E) -
 						                                          int(param.min[param.E]/param.Delta_E)];
@@ -2232,6 +1649,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_elastic, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 0;
 			}
 			else if (r0 >= output.ev_brems_2nd[int(param.en/param.Delta_E) -
@@ -2250,6 +1668,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else {
@@ -2260,6 +1679,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2271,6 +1691,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2284,6 +1705,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 
 				}
@@ -2293,6 +1715,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 2;
 				}
 			}
@@ -2319,6 +1742,7 @@ int PES::events(){
 							CP.GRIDNO_brems_1st, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
 				}
+				// FS.seed += 1e7;
 				FS.event_type = 1;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2328,6 +1752,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 3;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2339,6 +1764,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 4;
 			}
 			else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2352,6 +1778,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 5;
 
 			}
@@ -2361,6 +1788,7 @@ int PES::events(){
 						0, 1, 1, 0, 1,
 						CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 						&CP.neval, &CP.fail, integral, error, prob);
+				// FS.seed += 1e7;
 				FS.event_type = 6;
 			}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2376,6 +1804,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 3;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2387,6 +1816,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l1k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 4;
 				}
 				else if (r2 <= output.ev_brems_2nd_l1k1[int(param.en/param.Delta_E) -
@@ -2400,6 +1830,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k1, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
+					// FS.seed += 1e7;
 					FS.event_type = 5;
 
 				}
@@ -2409,7 +1840,7 @@ int PES::events(){
 							0, 1, 1, 0, 1,
 							CP.GRIDNO_brems_2nd_l2k2, CP.STATEFILE, CP.SPIN,
 							&CP.neval, &CP.fail, integral, error, prob);
-
+					// FS.seed += 1e7;
 					FS.event_type = 6;
 				}
 			if (FS.E_prime_l == param.aux) FS.failed_ev++;
@@ -2422,6 +1853,7 @@ int PES::events(){
 	return 0;
 
 }
+
 
 int PES::shiftQ2(const double thl_deg) {
 
@@ -2531,6 +1963,7 @@ int PES::shiftQ2(const double thl_deg) {
 
 		return 0;
 }
+
 
 int PES::sigma_diff_Omega_l(const double thl_deg) {
 
@@ -2881,7 +2314,7 @@ int PES::sigma_diff_Omega_l(const double thl_deg) {
 			errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st;
 			output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
 			output.rel_asymm_1st = - 100.*(output.asymm_1st - output.asymm_born) / output.asymm_born;
-			errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
+			errors.asymm_1st = abs(output.asymm_1st) * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
 					+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
 			output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
 			errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) + pow(errors.sigma_unpol_1st,2.));
@@ -2973,7 +2406,7 @@ int PES::sigma_diff_Omega_l(const double thl_deg) {
 
 		output.asymm_2nd = output.sigma_pol_2nd / output.sigma_unpol_2nd;
 		output.rel_asymm_2nd = -100.*(output.asymm_2nd - output.asymm_born) / output.asymm_born;
-		errors.asymm_2nd = output.asymm_2nd * sqrt(pow(errors.sigma_pol_2nd / output.sigma_pol_2nd, 2.)
+		errors.asymm_2nd = abs(output.asymm_2nd) * sqrt(pow(errors.sigma_pol_2nd / output.sigma_pol_2nd, 2.)
 				+ pow(errors.sigma_unpol_2nd / output.sigma_unpol_2nd, 2.));
 		output.sigma_2nd = output.sigma_pol_2nd + output.sigma_unpol_2nd;
 		errors.sigma_2nd = sqrt(pow(errors.sigma_pol_2nd,2.) + pow(errors.sigma_unpol_2nd,2.));
@@ -3024,7 +2457,7 @@ int PES::sigma_diff_Omega_l(const double thl_deg) {
 					output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
 					output.asymm_1st *= param.P;
 					output.rel_asymm_1st = - 100.*(output.asymm_1st - output.asymm_born) / output.asymm_born;
-					errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
+					errors.asymm_1st = abs(output.asymm_1st) * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
 							+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
 					output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
 					errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) + pow(errors.sigma_unpol_1st,2.));
@@ -3107,7 +2540,7 @@ int PES::sigma_diff_Omega_l(const double thl_deg) {
 				errors.sigma_pol_1st = errors.sigma_pol_inelastic_1st;
 				output.asymm_born = output.sigma_pol_born / output.sigma_unpol_born;
 				output.asymm_1st = output.sigma_pol_1st / output.sigma_unpol_1st;
-				errors.asymm_1st = output.asymm_1st * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
+				errors.asymm_1st = abs(output.asymm_1st) * sqrt(pow(errors.sigma_pol_1st / output.sigma_pol_1st, 2.)
 						+ pow(errors.sigma_unpol_1st / output.sigma_unpol_1st, 2.));
 				output.sigma_1st = output.sigma_pol_1st + output.sigma_unpol_1st;
 				errors.sigma_1st = sqrt(pow(errors.sigma_pol_1st,2.) + pow(errors.sigma_unpol_1st,2.));
@@ -3156,6 +2589,7 @@ int PES::sigma_diff_Omega_l(const double thl_deg) {
 
 	return 0;
 }
+
 
 double PES::delta(const double thl_deg) {
 
@@ -3213,6 +2647,7 @@ double PES::delta(const double thl_deg) {
 	return delta;
 }
 
+
 double PES::running_sw2(const double Q2) {
 
 	param.final_param(input);
@@ -3224,12 +2659,14 @@ double PES::running_sw2(const double Q2) {
 	return integrands.CS.VC.kappa_weak(Q2)*param.sw2;
 }
 
+
 double PES::get_total_unpol_cross_section(const double E) {
 
 	param.en = round(E/param.Delta_E) * param.Delta_E;
 
 	return output.sigma_unpol_1st_vect[int(param.en/param.Delta_E) - int(param.min[param.E]/param.Delta_E)];
 }
+
 
 void PES::set_final_state() {
 
@@ -3302,6 +2739,7 @@ void PES::set_final_state() {
 	FS.event_no++;
 }
 
+
 void PES::write_output() {
 
 	time_t present_time;
@@ -3313,25 +2751,26 @@ void PES::write_output() {
 		param.output_file += ".out";
 		out.precision(7);
 
+// Output to file
 		out.open(param.output_file.c_str());
 
 		out <<"##########################################################################\n"
-				<<"##                               POLARES "<< VERSION << "\n"
-				<<"##\n"
-				<<"##       Radiative Corrections for Polarized Electron-Proton Scattering     \n"
-				<<"##\n"
-				<<"##                              R.-D. Bucoveanu                             \n"
-				<<"##\n"
-				<<"##                         "<<dt
-		        <<"##\n"
-				<<"## If you use POLARES please cite R.-D. Bucoveanu and H. Spiesberger, \n"
-				<<"## Eur. Phys. J. A (2019) 55: 57, arXiv:1811.04970 [hep-ph]. \n"
-		        <<"## Copyright (c) Razvan Bucoveanu, 2019. E-mail: rabucove@uni-mainz.de\n";
-		out <<"##########################################################################\n"
-				<<"##                                  Input                                   \n"
-				<<"##\n"
-				<<"## [General Input]                                                          \n"
-				<<"## Type of incident lepton = ";
+            <<"##                               POLARES "<< VERSION << "\n"
+            <<"##\n"
+            <<"##       Radiative Corrections for Polarized Electron-Proton Scattering   \n"
+            <<"##\n"
+            <<"##                              R.-D. Bucoveanu                           \n"
+            <<"##\n"
+            <<"##                         "<<dt
+            <<"##\n"
+            <<"## If you use POLARES please cite R.-D. Bucoveanu and H. Spiesberger,     \n"
+            <<"## Eur. Phys. J. A (2019) 55: 57, arXiv:1811.04970 [hep-ph].              \n"
+            <<"## Copyright (c) Razvan Bucoveanu, 2019. E-mail: rabucove@uni-mainz.de    \n"
+            <<"##########################################################################\n";
+        out <<"##                                  Input                                 \n"
+            <<"##\n"
+            <<"## [General Input]                                                        \n"
+            <<"## Type of incident lepton = ";
 		if (param.flag[param.lepton] == 0) out<<"electron\n";
 		if (param.flag[param.lepton] == 1) out<<"positron\n";
 		if (param.flag[param.lepton] == 2) out<<"muon\n";
@@ -3359,15 +2798,15 @@ void PES::write_output() {
 		if (param.flag[param.form_factors] == 2) out <<"Friedrich Walcher\n";
 		if (param.flag[param.form_factors] == 3) out <<"Static Limit\n";
 		if (param.flag[param.form_factors] == 4) out <<"User defined\n";
+        out <<"## Degree of Polarization = "<<param.P*100.<<"%\n";
 		out <<"## Calculate the asymmetry = ";
 		if (param.flag[param.asymmetry] == 0) out<<"no\n";
 		if (param.flag[param.asymmetry] == 1) {
 			out<<"yes\n";
-			out<<"## Degree of Polarization = "<<param.P*100.<<"%\n";
 			out<<"## sin2thetaW = "<<param.sw2<<"\n";
-			out<<"## kappa form factor = ";
-			if (param.flag[param.kappa_weak] == 0) out<<"0 - no running for sin2thetaW\n";
-			if (param.flag[param.kappa_weak] == 1) out<<"1 - full contribution for the running of sin2thetaW\n";
+			out<<"## Running weak mixing angle = ";
+			if (param.flag[param.kappa_weak] == 0) out<<"0 - no running, fixed sin2thetaW\n";
+			if (param.flag[param.kappa_weak] == 1) out<<"1 - effective sin2thetaW from CM\n";
 		}
 		out <<"## Maximum number of evaluations for 1st order bremsstrahlung = "<<param.MAXEVAL_1st<<"\n";
 		if (param.flag[param.brems] == 2 || param.flag[param.brems] == 3)
@@ -3379,14 +2818,17 @@ void PES::write_output() {
 		out<<"##\n";
 		out <<"## [E_gamma < Delta]\n";
 		out <<"## Vacuum Polarization = ";
-		if (param.flag[param.vac_pol] == 0) out<<"no contribution\n";
+		if (param.flag[param.vac_pol] == 0) out<<"not included\n";
 		if (param.flag[param.vac_pol] == 1) out<<"Only electron-positron loops\n";
 		if (param.flag[param.vac_pol] == 2) out<<"Full leptonic contributions\n";
-		if (param.flag[param.vac_pol] == 3) out<<"Hadronic contributions (Ignatov)\n";
-		if (param.flag[param.vac_pol] == 4) out<<"Hadronic contributions (Jegerlehner)\n";
-		if (param.flag[param.vac_pol] == 5) out<<"Hadronic contributions (NKT18))\n";
+		if (param.flag[param.vac_pol] == 3)
+            out<<"Including hadronic contributions (Ignatov)\n";
+		if (param.flag[param.vac_pol] == 4)
+            out<<"Including adronic contributions (Jegerlehner)\n";
+		if (param.flag[param.vac_pol] == 5)
+            out<<"Including hadronic contributions (NKT18))\n";
 		out <<"## Two-photon exchange correction (TPE) = ";
-		if (param.flag[param.tpe] == 0) out<<"no contribution\n";
+		if (param.flag[param.tpe] == 0) out<<"not included\n";
 		if (param.flag[param.tpe] == 1) out<<"Calculation for a point like particle (Feshbach term)\n";
 		if (param.flag[param.tpe] == 2) out<<"Tomalak total calculation\n";
 		out<<"##\n";
@@ -3394,11 +2836,23 @@ void PES::write_output() {
 		out <<"## Type of hard-photon bremsstrahlung = ";
 		if (param.flag[param.brems] == 0) out<<"no hard photon contribution\n";
 		if (param.flag[param.brems] == 1) out<<"1st order\n";
-		if (param.flag[param.brems] == 2) out<<"1st order and 2nd order\n";
+		if (param.flag[param.brems] == 2) out<<"1st and 2nd order\n";
 		if (param.flag[param.brems] == 3) out<<"2nd order\n";
-		out <<"## Hadronic Radiation = ";
-		if (param.flag[param.brems_hadr] == 0) out<<"no hadronic radiation contribution\n";
-		if (param.flag[param.brems_hadr] == 1) out<<"1st order\n";
+        out <<"## Hadronic sof+virtual corrections = ";
+        if (param.flag[param.hadr_corr] == 0) out<<"no hadronic corrections\n";
+        if (param.flag[param.hadr_corr] == 1) out<<"only tpe and lep-had interference\n";
+        if (param.flag[param.hadr_corr] == 2) out<<"only hadronic corrections\n";
+        if (param.flag[param.hadr_corr] == 3) out<<"complete tpe + interference + hadronic\n";
+		out <<"## Hadronic radiation = ";
+		if (param.flag[param.brems_hadr] == 0) out<<"no contribution from hadronic radiation \n";
+		if (param.flag[param.brems_hadr] == 1) out<<"only lep-had interference\n";
+        if (param.flag[param.brems_hadr] == 2) out<<"only hadronic radiation\n";
+        if (param.flag[param.brems_hadr] == 3) out<<"complete interference + hadronic\n";
+        if (param.flag[param.brems_hadr] != param.flag[param.hadr_corr]) {
+            out<<"***** WARNING: ***** \n"
+               <<"***** Input for Hadronic corrections and Hadronic Radiation \n"
+               <<"***** do not match. Result unphysical and for testing only! \n";
+        }
 		out <<"## E_gamma max = "<<param.max[param.E_gamma] <<" GeV\n";
 		out <<"## E' min = "<<param.min[param.E_prime] <<" GeV\n";
 		out <<"## E' max = "<<param.max[param.E_prime] <<" GeV\n";
@@ -3406,61 +2860,102 @@ void PES::write_output() {
 		out <<"## theta_gamma max = "<<param.max[param.theta_gamma_deg]<<" degrees\n";
 		//	out <<"## Q'^2 min = "<<param.min[param.Q2_prime]<<" GeV^2\n";
 		//	out <<"## Q'^2 max = "<<param.max[param.Q2_prime]<<" GeV^2\n";
-		out <<"##########################################################################\n"
-				<<"##                   Numerical integration results                          \n"
-				<<"##\n";
-		if (output.sigma_unpol_born != 0)
-			out <<"## Sigma unpol Born = " << output.sigma_unpol_born
-			<<" +- "<< errors.sigma_unpol_born << " nb\n";
-		if (output.sigma_unpol_elastic_1st != 0)
-			out <<"## Sigma unpol soft-photon 1st order = " << output.sigma_unpol_elastic_1st
-			<<" +- "<< errors.sigma_unpol_elastic_1st << " nb\n";
-		if (output.sigma_unpol_elastic_2nd != 0)
-			out <<"## Sigma unpol soft-photon 2nd order = " << output.sigma_unpol_elastic_2nd
-			<<" +- "<< errors.sigma_unpol_elastic_2nd << " nb\n";
-		if (output.sigma_unpol_inelastic_1st != 0)
-			out <<"## Sigma unpol hard-photon 1st order = " << output.sigma_unpol_inelastic_1st
-			<<" +- "<< errors.sigma_unpol_inelastic_1st << " nb\n";
-		if (output.sigma_unpol_inelastic_loop != 0)
-			out <<"## Sigma unpol hard-photon + 1loop = " << output.sigma_unpol_inelastic_loop
-			<<" +- "<< errors.sigma_unpol_inelastic_loop << " nb\n";
-		if (output.sigma_unpol_inelastic_2nd != 0)
-			out <<"## Sigma unpol hard_photon 2nd order = " << output.sigma_unpol_inelastic_2nd
-			<<" +- "<< errors.sigma_unpol_inelastic_2nd << " nb\n";
-		if (output.sigma_unpol_1st != 0)
-			out <<"## Sigma unpol 1st order = " << output.sigma_unpol_1st
-			<<" +- "<< errors.sigma_unpol_1st << " nb\n";
-		if (output.sigma_unpol_2nd != 0)
-			out <<"## Sigma unpol 2nd order = " << output.sigma_unpol_2nd
-			<<" +- "<< errors.sigma_unpol_2nd << " nb\n";
-		if (output.sigma_pol_elastic_1st != 0)
-			out <<"## Sigma pol soft-photon 1st order = " << output.sigma_pol_elastic_1st
-			<<" +- "<< errors.sigma_pol_elastic_1st << " nb\n";
-		if (output.sigma_pol_elastic_2nd != 0)
-			out <<"## Sigma pol soft-photon 2nd order = " << output.sigma_pol_elastic_2nd
-			<<" +- "<< errors.sigma_pol_elastic_2nd << " nb\n";
-		if (output.sigma_pol_inelastic_1st != 0)
-			out <<"## Sigma pol hard-photon 1st order = " << output.sigma_pol_inelastic_1st
-			<<" +- "<< errors.sigma_pol_inelastic_1st << " nb\n";
-		if (output.sigma_pol_inelastic_loop != 0)
-			out <<"## Sigma pol hard photon + 1 loop = " << output.sigma_pol_inelastic_loop
-			<<" +- "<< errors.sigma_pol_inelastic_loop << " nb\n";
-		if (output.sigma_pol_inelastic_2nd != 0)
-			out <<"## Sigma pol hard-photon 2nd order = " << output.sigma_pol_inelastic_2nd
-			<<" +- "<< errors.sigma_pol_inelastic_2nd << " nb\n";
-		if (output.sigma_pol_1st != 0) out << "## Sigma pol 1st order = " << output.sigma_pol_1st
-				<< " +- " << errors.sigma_pol_1st << " nb\n";
-		if (output.sigma_pol_2nd != 0) out << "## Sigma pol 2nd order = " << output.sigma_pol_2nd
-				<< " +- " << errors.sigma_pol_2nd << " nb\n";
-		if (output.sigma_pol_born != 0)
-			out <<"## Sigma pol Born = " << output.sigma_pol_born
-			<<" +- "<< errors.sigma_pol_born << " nb\n";
-		if (output.asymm_1st != 0)
-			out <<"## Asymm 1st order = " << output.asymm_1st <<" +- "<< errors.asymm_1st << "\n";
-		if (output.asymm_2nd != 0)
-			out <<"## Asymm 2nd order = " << output.asymm_2nd <<" +- "<< errors.asymm_2nd << "\n";
-		if (output.asymm_born != 0)
-			out <<"## Asymm Born = " << output.asymm_born <<" +- "<< errors.asymm_born << "\n";
+		out <<"\n"
+            <<"##########################################################################\n"
+            <<"                     Results of the numerical integration                 \n"
+            <<"\n";
+
+        out << "Leading-order results:\n";
+        out << "Sigma unpol Born =                        "
+            << output.sigma_unpol_born
+            << " +- "<< errors.sigma_unpol_born << " nb\n";
+        out << "Sigma pol Born =                          "
+            << output.sigma_pol_born
+            << " +- "<< errors.sigma_pol_born << " nb\n";
+        out << "\n";
+        out << "\n";
+
+        out << "First-order corrections:\n";
+        out << "Sigma unpol Born + soft-photon + 1-loop = "
+            << output.sigma_unpol_elastic_1st
+            << " +- "<< errors.sigma_unpol_elastic_1st << " nb\n";
+        out << "Sigma unpol 1 hard photon hadr interf=    "
+            << output.sigma_unpol_inelastic_1st_hadr_interf
+            << " +- " << errors.sigma_unpol_inelastic_1st_hadr_interf << " nb\n";
+        out << "Sigma unpol 1 hard photon hadronic =      "
+            << output.sigma_unpol_inelastic_1st_hadr
+            << " +- " << errors.sigma_unpol_inelastic_1st_hadr << " nb\n";
+        out << "Sigma unpol 1 hard photon (incl.hadr) =   "
+            << output.sigma_unpol_inelastic_1st
+            << " +- "<< errors.sigma_unpol_inelastic_1st << " nb\n";
+        out << "Sigma unpol 1st order (complete) =        "
+            << output.sigma_unpol_1st
+            << " +- "<< errors.sigma_unpol_1st << " nb\n";
+        out << "\n";
+        out << "Sigma pol Born + soft-photon + 1-loop =   "
+            << output.sigma_pol_elastic_1st
+            << " +- "<< errors.sigma_pol_elastic_1st << " nb\n";
+        out << "Sigma pol 1 hard photon (leptonic only) = "
+            << output.sigma_pol_inelastic_1st
+            << " +- "<< errors.sigma_pol_inelastic_1st << " nb\n";
+        out << "Sigma pol 1st order (complete) =          "
+            << output.sigma_pol_1st
+            << " +- " << errors.sigma_pol_1st << " nb\n";
+        out << "\n";
+        out << "\n";
+
+        out << "Second-order corrections:\n";
+        out << "Sigma unpol Born + 1st + 2 soft photons + 2-loop = "
+            << output.sigma_unpol_elastic_2nd
+            << " +- "<< errors.sigma_unpol_elastic_2nd << " nb\n";
+        out << "Sigma unpol 1 hard photon with loop =              "
+            << output.sigma_unpol_inelastic_loop
+            << " +- "<< errors.sigma_unpol_inelastic_loop << " nb\n";
+        out << "Sigma unpol 2 hard photons =                       "
+            << output.sigma_unpol_inelastic_2nd
+            << " +- "<< errors.sigma_unpol_inelastic_2nd << " nb\n";
+        out << "Sigma unpol hard photon + soft photon (fin) =      "
+            << output.sigma_unpol_2nd_add
+            << " +- " << errors.sigma_unpol_2nd_add << " nb\n";
+        out << "Sigma unpol 2nd order (complete) =                 "
+            << output.sigma_unpol_2nd
+            << " +- "<< errors.sigma_unpol_2nd << " nb\n";
+        out << "\n";
+
+        out << "Sigma pol Born + 1st + 2 soft photons + 2-loop =   "
+            << output.sigma_pol_elastic_2nd
+            << " +- "<< errors.sigma_pol_elastic_2nd << " nb\n";
+        out << "Sigma pol 1 hard photon + with loop =              "
+            << output.sigma_pol_inelastic_loop
+            << " +- "<< errors.sigma_pol_inelastic_loop << " nb\n";
+        out << "Sigma pol 2 hard photons =                         "
+            << output.sigma_pol_inelastic_2nd
+            << " +- "<< errors.sigma_pol_inelastic_2nd << " nb\n";
+        out << "Sigma pol hard photon + soft photon (fin) =        "
+            << output.sigma_pol_2nd_add
+            << " +- " << errors.sigma_pol_2nd_add << " nb\n";
+        out << "Sigma pol 2nd order (complete) =                   "
+            << output.sigma_pol_2nd
+            << " +- " << errors.sigma_pol_2nd << " nb\n";
+        out << "\n";
+        out << "\n";
+
+        out << "Polarization asymmetry:\n";
+        out << "PV asymmetry at leading order =                "
+            << output.asymm_born
+            << " +- "<< errors.asymm_born << "\n";
+        out << "PV asymmetry including 1st order corrections = "
+            << output.asymm_1st
+            << " +- "<< errors.asymm_1st << "\n";
+        out << "PV asymmetry including 2nd order corrections = "
+            << output.asymm_2nd
+            << " +- "<< errors.asymm_2nd << "\n";
+        out << "1st order correction in percent = "
+            << output.rel_asymm_1st << "\n";
+        out << "2nd order correction in percent = "
+            << output.rel_asymm_2nd << "\n";
+        out << "\n";
+        out << "\n";
 
 		out <<"##########################################################################";
 
@@ -3469,18 +2964,20 @@ void PES::write_output() {
 		param.output_file.erase (param.output_file.end()-4, param.output_file.end());
 	}
 
-	std::cout <<"\n##########################################################################\n"
-			<<"##                               POLARES "<< VERSION << "\n"
-			<<"##\n"
-			<<"##       Radiative Corrections for Polarized Electron-Proton Scattering     \n"
-			<<"##\n"
-			<<"##                              R.-D. Bucoveanu                             \n"
-			<<"##\n"
-			<<"##                         "<<dt
-	        <<"##\n"
-			<<"## If you want to use POLARES please cite R.-D. Bucoveanu and H. Spiesberger, \n"
-			<<"## Eur. Phys. J. A (2019) 55: 57, arXiv:1811.04970 [hep-ph]. \n"
-	        <<"## Copyright (c) Razvan Bucoveanu, 2019. E-mail: rabucove@uni-mainz.de\n";
+// Echo output at terminal
+	std::cout <<"\n"
+              <<"##########################################################################\n"
+			  <<"##                               POLARES "<< VERSION << "\n"
+			  <<"##\n"
+			  <<"##       Radiative Corrections for Polarized Electron-Proton Scattering   \n"
+			  <<"##\n"
+			  <<"##                              R.-D. Bucoveanu                           \n"
+			  <<"##\n"
+			  <<"##                         "<<dt
+	          <<"##\n"
+			  <<"## If you use POLARES please cite R.-D. Bucoveanu and H. Spiesberger,     \n"
+			  <<"## Eur. Phys. J. A (2019) 55: 57, arXiv:1811.04970 [hep-ph].              \n"
+	          <<"## Copyright (c) Razvan Bucoveanu, 2019. E-mail: rabucove@uni-mainz.de    \n";
 
 	if (param.flag[param.echo_input] == 1) {
 
@@ -3518,13 +3015,12 @@ void PES::write_output() {
 		if (param.flag[param.asymmetry] == 0) std::cout<<"no\n";
 		if (param.flag[param.asymmetry] == 1) {
 			std::cout<<"yes\n";
-			std::cout<<"## Degree of Polarization = "<<param.P*100.<<"%\n";
 			std::cout<<"## sin2thetaW = "<<param.sw2<<"\n";
-			std::cout<<"## kappa form factor = ";
-			if (param.flag[param.kappa_weak] == 0) std::cout<<"0 - no running for sin2thetaW\n";
-			if (param.flag[param.kappa_weak] == 1) std::cout<<"1 - full contribution for the running of sin2thetaW\n";
+			std::cout<<"## Running weak mixing angle = ";
+			if (param.flag[param.kappa_weak] == 0) std::cout<<"0 - no running, fixed sin2thetaW\n";
+			if (param.flag[param.kappa_weak] == 1) std::cout<<"1 - effective sin2thetaW from CM\n";
 		}
-		std::cout <<"## Maximum number of evaluations for 1st order bremsstrahlung = "<<param.MAXEVAL_1st<<"\n";
+        std::cout <<"## Maximum number of evaluations for 1st order bremsstrahlung = "<<param.MAXEVAL_1st<<"\n";
 		if (param.flag[param.brems] == 2 || param.flag[param.brems] == 3)
 			std::cout <<"## Maximum number of evaluations for 2nd order bremsstrahlung = "<<param.MAXEVAL_2nd<<"\n";
 //		std::cout <<"## Minimum number of evaluations = "<<param.MINEVAL<<"\n";
@@ -3534,22 +3030,41 @@ void PES::write_output() {
 		std::cout<<"##\n";
 		std::cout <<"## [E_gamma < Delta]\n";
 		std::cout <<"## Vacuum Polarization = ";
-		if (param.flag[param.vac_pol] == 0) std::cout<<"no contribution\n";
+		if (param.flag[param.vac_pol] == 0) std::cout<<"not included\n";
 		if (param.flag[param.vac_pol] == 1) std::cout<<"Only electron-positron loops\n";
 		if (param.flag[param.vac_pol] == 2) std::cout<<"Full leptonic contributions\n";
-		if (param.flag[param.vac_pol] == 3) std::cout<<"Hadronic contributions\n";
+		if (param.flag[param.vac_pol] == 3)
+            std::cout<<"Including hadronic contributions (Ignatov)\n";
+        if (param.flag[param.vac_pol] == 4)
+            std::cout<<"Including hadronic contributions (Jegerlehner)\n";
+        if (param.flag[param.vac_pol] == 5) {
+            std::cout<<"Including hadronic contributions (KNT18)\n";
+            std::cout<<"***** Grid file needed ! \n";
+        }
 		std::cout <<"## Two-photon exchange correction (TPE) = ";
-		if (param.flag[param.tpe] == 0) std::cout<<"no contribution\n";
+		if (param.flag[param.tpe] == 0) std::cout<<"not included\n";
 		if (param.flag[param.tpe] == 1) std::cout<<"Calculation for a point like particle (Feshbach term)\n";
 		std::cout<<"##\n";
 		std::cout <<"## [E_gamma > Delta]\n";
-		std::cout <<"## Type of Bremsstrahlung = ";
+		std::cout <<"## Type of hard-photon bremsstrahlung = ";
 		if (param.flag[param.brems] == 1) std::cout<<"1st order\n";
-		if (param.flag[param.brems] == 2) std::cout<<"1st order and 2nd order\n";
+		if (param.flag[param.brems] == 2) std::cout<<"1st and 2nd order\n";
 		if (param.flag[param.brems] == 3) std::cout<<"2nd order\n";
-		std::cout <<"## Hadronic Radiation = ";
-		if (param.flag[param.brems_hadr] == 0) std::cout<<"no hadronic radiation contribution\n";
-		if (param.flag[param.brems_hadr] == 1) std::cout<<"1st order\n";
+        std::cout <<"## Hadronic soft+virtual corrections = ";
+        if (param.flag[param.hadr_corr] == 0) std::cout<<"no hadronic corrections\n";
+        if (param.flag[param.hadr_corr] == 1) std::cout<<"only tpe and lep-had interference\n";
+        if (param.flag[param.hadr_corr] == 2) std::cout<<"only hadronic corrections\n";
+        if (param.flag[param.hadr_corr] == 3) std::cout<<"complete tpe + interference + hadronic\n";
+		std::cout <<"## Hadronic radiation = ";
+        if (param.flag[param.brems_hadr] == 0) std::cout<<"no contribution from hadronic radiation \n";
+        if (param.flag[param.brems_hadr] == 1) std::cout<<"only lep-had interference\n";
+        if (param.flag[param.brems_hadr] == 2) std::cout<<"only hadronic radiation\n";
+        if (param.flag[param.brems_hadr] == 3) std::cout<<"complete interference + hadronic\n";
+        if (param.flag[param.brems_hadr] != param.flag[param.hadr_corr]) {
+            std::cout<<"***** WARNING: ***** \n"
+                     <<"***** Input for Hadronic corrections and Hadronic Radiation \n"
+                     <<"***** do not match. Result unphysical and for testing only! \n";
+        }
 		std::cout <<"## E_gamma max = "<<param.max[param.E_gamma] <<" GeV\n";
 		std::cout <<"## E' min = "<<param.min[param.E_prime] <<" GeV\n";
 		std::cout <<"## E' max = "<<param.max[param.E_prime] <<" GeV\n";
@@ -3558,17 +3073,19 @@ void PES::write_output() {
 	}
 }
 
+
 bool PES::change_energy_initialization(const double E){
 	bool E_is_OK(true);
 
 	if (E > 10.) {
 		E_is_OK = false;
-		std::cout << "Warning! Energy has to be smaller than 10 GeV for generating events";
+		std::cout << "Warning! Energy has to be smaller than 10 GeV for generating events\n\n";
 	}
 
 	param.en = E;
 	return E_is_OK;
 }
+
 
 bool PES::change_energy_events(const double E){
 	bool E_is_OK(true);
@@ -3585,6 +3102,7 @@ bool PES::change_energy_events(const double E){
 	return E_is_OK;
 }
 
+
 bool PES::set_child_process(const int child_process) {
 	bool seed_is_OK(false);
 
@@ -3598,6 +3116,7 @@ bool PES::set_child_process(const int child_process) {
 
 	return seed_is_OK;
 }
+
 
 double PES::get_E() {
 
