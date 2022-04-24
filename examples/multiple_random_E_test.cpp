@@ -103,7 +103,7 @@ int main()
 
 				if (pes.FS.k_2[0] != 0.)
 			fprintf(fout,
-					" %7d   %8.14lf  %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %4.10lf\n",
+					" %7ll   %8.14lf  %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf  %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %8.14lf %4.10lf\n",
 					pes.FS.event_no,
 					Ei, pes.FS.l_1[0],
 					pes.FS.l_2[0],pes.FS.l_2[1],pes.FS.l_2[2],pes.FS.l_2[3],

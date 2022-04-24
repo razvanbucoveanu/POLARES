@@ -45,35 +45,22 @@ int main()
 //	input class declaration
 	Input input;
 	input.input_file = input_file;
-//	input.thl_min = 25.;
-//	input.thl_max = 45.;
-//	input.E = 0.155;
-//	input.E_prime_min = 0.045;
-//	input.Delta = 1e-13;
-//	input.E_prime_max = 1e10;
-//	input.E_gamma_max = 0.11;
-//	input.no_cores = 1;
-//	input.thg_min = 0.;
-//	input.thg_max = 180.;
-//	input.flag[input.asymmetry] = 0;
-//	input.flag[input.order] = 1;
-//	input.flag[input.brems] = 4;
-//	input.flag[input.GL] = 0.;
-//	input.flag[input.LO] = 0;
-//	input.flag[input.brems_add] = 0;
-//	input.flag[input.int_method] = 0;
-//	input.no_eval_1st = 1e7;
-//	input.no_eval_gamma_loop = 1e7;
-//	input.no_eval_2nd_add = 1e7;
-//	input.lambda = constants::me2;
-//	input.Delta_eps = 0.;
-//	input.thl_deg = 35.;
-//	input.thg_deg = 35.;
+	input.thl_min = 25.;
+	input.thl_max = 45.;
+	input.E = 0.155;
+	input.E_prime_min = 0.045;
+	input.Delta = 0.01;
+	input.flag[input.asymmetry] = 1;
+	input.flag[input.order] = 1;
+	input.flag[input.brems] = 4;
+	input.flag[input.LO] = 0;
+	input.flag[input.brems_add] = 0;
+	input.flag[input.int_method] = 0;
+	input.no_eval_1st = 1e7;
 
 	PES pes;
 	pes.set_input(input);
 	pes.initialization();
-//	pes.sigma_diff_Omega_l(35.);
 
 	cout.precision(14);
 	cout <<"################################################################################\n"
@@ -130,8 +117,6 @@ int main()
 	time(&time_events);
 	cout<<"\nInitialization Time: "<<difftime(time_events,time_start)<<" seconds "<<"\n\n";
 
-//	cout << "NLO = " << pes.output.sigma_unpol_1st - pes.output.sigma_unpol_born <<"\n";
-
 //	Warning!
 	//Current version of event generator works only for energies between 20 and 200 MeV with an increment of 0.1 MeV
 	if (no_events != 0) {
@@ -162,6 +147,6 @@ int main()
 		cout << "efficiency: " <<100 - pes.FS.failed_ev / double (no_events) * 100. << "\n";
 		cout << std::setprecision(15)<< "Events Time: "<<difftime(time_end,time_events)<<" seconds "<<"\n\n";
 	}
-//	}
+
 	return 0;
 }
